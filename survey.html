@@ -54,9 +54,14 @@
   <div class="sec">
     <h2><span class="no">1</span>门店信息</h2>
     <label for="store">门店名称 <span class="req">*</span></label>
-    <select id="store" required></select>
+    <input type="text" id="store" placeholder="填写门店名称" required maxlength="50">
     <label for="m3">M3（区域负责人） <span class="req">*</span></label>
-    <input type="text" id="m3" placeholder="填写你的M3姓名" required maxlength="20">
+    <select id="m3" required>
+      <option value="">请选择M3</option>
+      <option value="肖志奇">肖志奇</option>
+      <option value="蒋杭生">蒋杭生</option>
+      <option value="周联杉">周联杉</option>
+    </select>
     <div class="row2">
       <div>
         <label for="activityDate">活动日期 <span class="req">*</span></label>
@@ -142,22 +147,12 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 // ==================== 配置区（改这里就行） ====================
 const SUPABASE_URL = 'https://mttxkqfeqtlpxilapqki.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10dHhrcWZlcXRscHhpbGFwcWtpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyNDQ1OTgsImV4cCI6MjEwMzgyMDU5OH0.YanNWOqKQ3j922XB3urE3sBqZgeFfSaz8NJhRArzT5o';
-// 门店列表：拿到100家门店名单后，按下面格式替换，一行一个，注意用英文逗号分隔
-const STORE_LIST = ['A','B','C','D','E'];
 // 默认活动日期（SPR 可以自己改）
 const DEFAULT_DATE = '2026-08-26';
 // ==============================================================
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// 门店下拉
-const storeSel = document.getElementById('store');
-STORE_LIST.forEach(s => {
-  const opt = document.createElement('option');
-  opt.value = s;
-  opt.textContent = s;
-  storeSel.appendChild(opt);
-});
 document.getElementById('activityDate').value = DEFAULT_DATE;
 
 // 自动计算
@@ -188,8 +183,8 @@ form.addEventListener('submit', async (e) => {
   cur.className = 'cur';
 
   const payload = {
-    p_store_name: storeSel.value,
-    p_m3: document.getElementById('m3').value.trim(),
+    p_store_name: document.getElementById('store').value.trim(),
+    p_m3: document.getElementById('m3').value,
     p_activity_date: document.getElementById('activityDate').value,
     p_spr_name: document.getElementById('sprName').value.trim(),
     p_mechanism1: Number(document.getElementById('mechanism1').value),
