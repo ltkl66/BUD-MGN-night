@@ -146,8 +146,6 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 // ==================== 配置区 ====================
 const SUPABASE_URL = 'https://mttxkqfeqtlpxilapqki.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10dHhrcWZlcXRscHhpbGFwcWtpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyNDQ1OTgsImV4cCI6MjEwMzgyMDU5OH0.YanNWOqKQ3j922XB3urE3sBqZgeFfSaz8NJhRArzT5o';
-// 门店列表：与问卷页保持一致；看板会优先用数据库里已有的门店生成筛选
-const STORE_LIST = ['A','B','C','D','E'];
 // 自动刷新间隔（毫秒），30 秒 = 30000
 const AUTO_REFRESH_MS = 30000;
 // =================================================
@@ -201,7 +199,6 @@ async function loadFilters() {
       if (r.m3) m3s.add(r.m3);
     });
   } catch (e) {}
-  STORE_LIST.forEach(s => stores.add(s));
   addOpt(storeSel, 'all', '全部门店');
   [...stores].sort().forEach(s => addOpt(storeSel, s, s));
   addOpt(m3Sel, 'all', '全部M3');
