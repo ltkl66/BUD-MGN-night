@@ -1,5 +1,5 @@
 -- ============================================================
--- 8.26 黑金之夜 · SPR 数据收集（v3：黑金拆4个SKU版）
+-- 9/4-10/19 黑金之夜 · SPR 数据收集（v4：黑金拆5个SKU版）
 -- 使用方法：登录 Supabase → 左侧 SQL Editor → 全部复制粘贴 → 点 Run
 -- 运行一次即可，之后不需要再运行
 -- ============================================================
@@ -12,17 +12,18 @@ create table if not exists public.spr_records (
   m3                text      not null default '',   -- M3（区域负责人）
   activity_date     date      not null,              -- 活动日期
   spr_name          text      not null,              -- SPR姓名（记录当天填写人，重复提交时取最新）
-  mechanism1        integer   not null default 0,    -- 机制1：到店即赠（听）
-  mechanism2        integer   not null default 0,    -- 机制2：1-6瓶点购即赠（听）
-  mechanism3        integer   not null default 0,    -- 机制3：12瓶赠整箱（听）
+  mechanism1        integer   not null default 0,    -- 机制1：开台赠饮（听）
+  mechanism2        integer   not null default 0,    -- 机制2：点购加赠（听）
+  mechanism3        integer   not null default 0,    -- 机制3：其他机制（听）
   mechanism4        integer   not null default 0,    -- 机制4：大桌锁定（店内收银条核销）（听）
   gift_255_cans     integer   not null default 0,    -- 赠品黑金255罐数量（自动=机制1+2+3+4）
   bud_classic_gold  integer   not null default 0,    -- 当晚百威家族（不含黑金：经典/金尊/纯生）销量（瓶）
   blackgold_1l      integer   not null default 0,    -- 当晚黑金1L罐（瓶）
   blackgold_500     integer   not null default 0,    -- 当晚黑金500瓶（瓶）
+  blackgold_600     integer   not null default 0,    -- 当晚黑金600瓶（瓶）
   blackgold_330     integer   not null default 0,    -- 当晚黑金330罐（瓶）
   blackgold_250     integer   not null default 0,    -- 当晚黑金250瓶（瓶）
-  blackgold_total   integer   not null default 0,    -- 当晚黑金销量合计（自动=4个SKU之和）
+  blackgold_total   integer   not null default 0,    -- 当晚黑金销量合计（自动=5个SKU之和）
   other_abi         integer   not null default 0,    -- 当晚其他百威（科罗娜/哈啤等）销量（瓶）
   abi_total         integer   not null default 0,    -- 当晚ABI总销量（自动=百威家族+黑金+其他）
   key_competitor    integer   not null default 0,    -- 当晚重点竞品销量（喜力/乌苏/老雪）（瓶）
@@ -56,6 +57,7 @@ create or replace function public.submit_spr_record(
   p_bud_classic_gold  integer,
   p_blackgold_1l      integer,
   p_blackgold_500     integer,
+  p_blackgold_600     integer,
   p_blackgold_330     integer,
   p_blackgold_250     integer,
   p_other_abi         integer,
@@ -74,20 +76,20 @@ declare
   v_comp integer;
 begin
   v_gift := coalesce(p_mechanism1,0) + coalesce(p_mechanism2,0) + coalesce(p_mechanism3,0) + coalesce(p_mechanism4,0);
-  v_bg   := coalesce(p_blackgold_1l,0) + coalesce(p_blackgold_500,0) + coalesce(p_blackgold_330,0) + coalesce(p_blackgold_250,0);
+  v_bg   := coalesce(p_blackgold_1l,0) + coalesce(p_blackgold_500,0) + coalesce(p_blackgold_600,0) + coalesce(p_blackgold_330,0) + coalesce(p_blackgold_250,0);
   v_abi  := coalesce(p_bud_classic_gold,0) + v_bg + coalesce(p_other_abi,0);
   v_comp := coalesce(p_key_competitor,0) + coalesce(p_other_competitor,0);
 
   insert into public.spr_records as t (
     store_name, m3, activity_date, spr_name,
     mechanism1, mechanism2, mechanism3, mechanism4, gift_255_cans,
-    bud_classic_gold, blackgold_1l, blackgold_500, blackgold_330, blackgold_250, blackgold_total,
+    bud_classic_gold, blackgold_1l, blackgold_500, blackgold_600, blackgold_330, blackgold_250, blackgold_total,
     other_abi, abi_total,
     key_competitor, other_competitor, competitor_total, beer_total
   ) values (
     p_store_name, p_m3, p_activity_date, p_spr_name,
     p_mechanism1, p_mechanism2, p_mechanism3, p_mechanism4, v_gift,
-    p_bud_classic_gold, p_blackgold_1l, p_blackgold_500, p_blackgold_330, p_blackgold_250, v_bg,
+    p_bud_classic_gold, p_blackgold_1l, p_blackgold_500, p_blackgold_600, p_blackgold_330, p_blackgold_250, v_bg,
     p_other_abi, v_abi,
     p_key_competitor, p_other_competitor, v_comp, v_abi + v_comp
   )
@@ -102,6 +104,7 @@ begin
         bud_classic_gold  = t.bud_classic_gold  + excluded.bud_classic_gold,
         blackgold_1l      = t.blackgold_1l      + excluded.blackgold_1l,
         blackgold_500     = t.blackgold_500     + excluded.blackgold_500,
+        blackgold_600     = t.blackgold_600     + excluded.blackgold_600,
         blackgold_330     = t.blackgold_330     + excluded.blackgold_330,
         blackgold_250     = t.blackgold_250     + excluded.blackgold_250,
         blackgold_total   = t.blackgold_total   + excluded.blackgold_total,
@@ -122,7 +125,8 @@ grant execute on function public.submit_spr_record(
   text, text, date, text,
   integer, integer, integer, integer,
   integer, integer, integer, integer,
-  integer, integer, integer, integer
+  integer, integer, integer, integer,
+  integer
 ) to anon;
 
 -- 5) 完成提示
