@@ -47,7 +47,10 @@
       <h1>黑金之夜 · 数据看板</h1>
       <div class="sub">SPR 填写数据实时展示（每 30 秒自动刷新）</div>
     </div>
-    <button class="btn" id="refreshBtn">立即刷新</button>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button class="btn" id="exportBtn" title="将当前筛选条件下的全部明细记录导出为 Excel">📥 下载明细 Excel</button>
+      <button class="btn" id="refreshBtn">立即刷新</button>
+    </div>
   </div>
 </div>
 
@@ -169,6 +172,144 @@ const NUM_FULL = [
 ];
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ============ 纯前端 XLSX 生成器(无第三方依赖,经 openpyxl 验证兼容) ============ */
+function xlsxEscapeXml(s) {
+  return String(s).replace(/[<>&'"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&apos;','"':'&quot;'}[c]));
+}
+let _crcTbl = null;
+function xlsxCrc32(buf) {
+  if (!_crcTbl) {
+    _crcTbl = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      _crcTbl[n] = c >>> 0;
+    }
+  }
+  let crc = 0xFFFFFFFF;
+  for (let i = 0; i < buf.length; i++) crc = _crcTbl[(crc ^ buf[i]) & 0xFF] ^ (crc >>> 8);
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+function xlsxZip(entries) {
+  const enc = new TextEncoder();
+  const parts = [], central = [];
+  let offset = 0;
+  entries.forEach(e => {
+    const name = enc.encode(e.name);
+    const data = e.data;
+    const crc = xlsxCrc32(data);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0, true);
+    lh.setUint16(8, 0, true); lh.setUint16(10, 0, true); lh.setUint16(12, 0x5D27, true);
+    lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true);
+    lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+    parts.push(new Uint8Array(lh.buffer), name, data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true);
+    ch.setUint16(8, 0, true); ch.setUint16(10, 0, true); ch.setUint16(12, 0, true); ch.setUint16(14, 0x5D27, true);
+    ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true);
+    ch.setUint16(28, name.length, true); ch.setUint16(30, 0, true); ch.setUint16(32, 0, true);
+    ch.setUint16(34, 0, true); ch.setUint16(36, 0, true); ch.setUint32(38, 0, true);
+    ch.setUint32(42, offset, true);
+    central.push(new Uint8Array(ch.buffer), name);
+    offset += 30 + name.length + data.length;
+  });
+  const cdStart = parts.reduce((s, p) => s + p.length, 0);
+  const cdSize = central.reduce((s, p) => s + p.length, 0);
+  const eocd = new DataView(new ArrayBuffer(22));
+  eocd.setUint32(0, 0x06054b50, true); eocd.setUint16(4, 0, true); eocd.setUint16(6, 0, true);
+  eocd.setUint16(8, entries.length, true); eocd.setUint16(10, entries.length, true);
+  eocd.setUint32(12, cdSize, true); eocd.setUint32(16, cdStart, true); eocd.setUint16(20, 0, true);
+  const out = [];
+  parts.forEach(p => out.push(p)); central.forEach(p => out.push(p)); out.push(new Uint8Array(eocd.buffer));
+  const total = out.reduce((s, p) => s + p.length, 0);
+  const res = new Uint8Array(total);
+  let o = 0;
+  out.forEach(p => { res.set(p, o); o += p.length; });
+  return res;
+}
+function xlsxColName(i) {
+  let s = ''; i += 1;
+  while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); }
+  return s;
+}
+function makeXlsx(sheetName, headers, rows) {
+  const esc = xlsxEscapeXml;
+  const enc = new TextEncoder();
+  const maxCols = headers.length;
+  let sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  sheet += '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>';
+  sheet += '<row r="1">';
+  headers.forEach((h, i) => { sheet += '<c r="' + xlsxColName(i) + '1" s="1" t="inlineStr"><is><t xml:space="preserve">' + esc(h) + '</t></is></c>'; });
+  sheet += '</row>';
+  let r = 2;
+  rows.forEach(row => {
+    sheet += '<row r="' + r + '">';
+    for (let i = 0; i < maxCols; i++) {
+      const v = row[i];
+      if (v === null || v === undefined || v === '') continue;
+      const c = xlsxColName(i) + r;
+      if (typeof v === 'number' && isFinite(v)) {
+        sheet += '<c r="' + c + '"><v>' + v + '</v></c>';
+      } else {
+        sheet += '<c r="' + c + '" t="inlineStr"><is><t xml:space="preserve">' + esc(v) + '</t></is></c>';
+      }
+    }
+    sheet += '</row>';
+    r++;
+  });
+  sheet += '</sheetData></worksheet>';
+
+  const contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+    '<Default Extension="xml" ContentType="application/xml"/>' +
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+    '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+    '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+    '</Types>';
+
+  const rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+    '</Relationships>';
+
+  const workbook = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+    '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+    '<sheets><sheet name="' + esc(sheetName) + '" sheetId="1" r:id="rId1"/></sheets></workbook>';
+
+  const wbRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>' +
+    '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+    '</Relationships>';
+
+  const styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font>' +
+    '<font><b/><sz val="11"/><name val="Calibri"/></font></fonts>' +
+    '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' +
+    '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+    '<cellXfs count="2">' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+    '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+    '</cellXfs>' +
+    '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
+    '</styleSheet>';
+
+  return xlsxZip([
+    { name: '[Content_Types].xml', data: enc.encode(contentTypes) },
+    { name: '_rels/.rels', data: enc.encode(rels) },
+    { name: 'xl/workbook.xml', data: enc.encode(workbook) },
+    { name: 'xl/_rels/workbook.xml.rels', data: enc.encode(wbRels) },
+    { name: 'xl/styles.xml', data: enc.encode(styles) },
+    { name: 'xl/worksheets/sheet1.xml', data: enc.encode(sheet) }
+  ]);
+}
+/* ============ XLSX 生成器结束 ============ */
+
 let allRows = [];
 
 function addOpt(sel, value, text) {
@@ -205,6 +346,26 @@ async function loadFilters() {
   [...m3s].sort().forEach(m => addOpt(m3Sel, m, m));
 }
 
+// 分页拉取全量：Supabase 单次查询最多返回 1000 行，记录多时必须翻页，否则看板/导出都会缺数据
+async function fetchAllRows(store, m3, start, end) {
+  const PAGE = 1000;
+  const all = [];
+  for (let off = 0; off < 50000; off += PAGE) {
+    let q = supabaseClient.from('spr_records').select('*');
+    if (store && store !== 'all') q = q.eq('store_name', store);
+    if (m3 && m3 !== 'all') q = q.eq('m3', m3);
+    if (start) q = q.gte('activity_date', start);
+    if (end) q = q.lte('activity_date', end);
+    q = q.order('activity_date', { ascending: false }).order('store_name', { ascending: true });
+    const { data, error } = await q.range(off, off + PAGE - 1);
+    if (error) return { data: null, error };
+    if (!data || !data.length) break;
+    all.push(...data);
+    if (data.length < PAGE) break;
+  }
+  return { data: all, error: null };
+}
+
 async function loadData() {
   const btn = document.getElementById('refreshBtn');
   btn.disabled = true;
@@ -215,14 +376,7 @@ async function loadData() {
   const start = document.getElementById('startDate').value;
   const end = document.getElementById('endDate').value;
 
-  let query = supabaseClient.from('spr_records').select('*');
-  if (store && store !== 'all') query = query.eq('store_name', store);
-  if (m3 && m3 !== 'all') query = query.eq('m3', m3);
-  if (start) query = query.gte('activity_date', start);
-  if (end) query = query.lte('activity_date', end);
-  query = query.order('activity_date', { ascending: false }).order('store_name', { ascending: true });
-
-  const { data, error } = await query;
+  const { data, error } = await fetchAllRows(store, m3, start, end);
   allRows = error ? [] : (data || []);
   render();
 
@@ -319,6 +473,27 @@ function render() {
   document.getElementById('emptyTip').style.display = rows.length ? 'none' : 'block';
 }
 
+// 一键导出明细 Excel（导出范围为当前筛选条件下的全部记录，与明细表格一致）
+function exportDetailExcel() {
+  if (!allRows.length) { alert('当前筛选条件下没有可导出的数据，请先录入或调整筛选。'); return; }
+  const headers = ['门店','M3','活动日期','SPR姓名'].concat(NUM_LABELS);
+  const rows = allRows.map(r =>
+    [r.store_name || '', r.m3 || '', r.activity_date || '', r.spr_name || '']
+      .concat(NUM_KEYS.map(k => Number(r[k]) || 0))
+  );
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const fname = '黑金之夜明细_' + now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate()) + '.xlsx';
+  const bytes = makeXlsx('明细', headers, rows);
+  const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fname;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1200);
+}
+
 // 初始化表头
 buildHead(document.getElementById('totalHead'), ['门店','M3','活动日期','SPR']);
 buildHead(document.getElementById('storeHead'), ['门店','M3','SPR']);
@@ -326,6 +501,7 @@ buildHead(document.getElementById('m3Head'), ['M3','门店数','天数']);
 buildHead(document.getElementById('detailHead'), ['门店','M3','活动日期','SPR']);
 
 document.getElementById('refreshBtn').addEventListener('click', loadData);
+document.getElementById('exportBtn').addEventListener('click', exportDetailExcel);
 document.getElementById('storeFilter').addEventListener('change', loadData);
 document.getElementById('m3Filter').addEventListener('change', loadData);
 document.getElementById('startDate').addEventListener('change', loadData);
