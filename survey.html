@@ -90,13 +90,15 @@
 
   <div class="sec">
     <h2><span class="no">3</span>ABI（百威品牌）销量</h2>
-    <div class="desc">销量单位均为<b>瓶</b>；黑金拆成 4 个 SKU 分别填写，合计自动计算</div>
+    <div class="desc">销量单位均为<b>瓶</b>；黑金拆成 5 个 SKU 分别填写，合计自动计算</div>
     <label for="bud_classic_gold">百威家族（不含黑金：经典、金尊、纯生）销量（瓶） <span class="req">*</span></label>
     <input type="number" id="bud_classic_gold" class="num" min="0" step="1" placeholder="0" required>
     <label for="blackgold_1l">黑金 1L 罐 <span class="req">*</span></label>
     <input type="number" id="blackgold_1l" class="num" min="0" step="1" placeholder="0" required>
     <label for="blackgold_500">黑金 500 瓶 <span class="req">*</span></label>
     <input type="number" id="blackgold_500" class="num" min="0" step="1" placeholder="0" required>
+    <label for="blackgold_600">黑金 600 瓶 <span class="req">*</span></label>
+    <input type="number" id="blackgold_600" class="num" min="0" step="1" placeholder="0" required>
     <label for="blackgold_330">黑金 330 罐 <span class="req">*</span></label>
     <input type="number" id="blackgold_330" class="num" min="0" step="1" placeholder="0" required>
     <label for="blackgold_250">黑金 250 瓶 <span class="req">*</span></label>
@@ -159,7 +161,7 @@ document.getElementById('activityDate').value = DEFAULT_DATE;
 function calc() {
   const v = id => { const el = document.getElementById(id); return Math.max(0, Number(el.value) || 0); };
   const gift = v('mechanism1') + v('mechanism2') + v('mechanism3') + v('mechanism4');
-  const bg = v('blackgold_1l') + v('blackgold_500') + v('blackgold_330') + v('blackgold_250');
+  const bg = v('blackgold_1l') + v('blackgold_500') + v('blackgold_600') + v('blackgold_330') + v('blackgold_250');
   const abi = v('bud_classic_gold') + bg + v('other_abi');
   const comp = v('key_competitor') + v('other_competitor');
   document.getElementById('cGift').textContent = gift;
@@ -194,6 +196,7 @@ form.addEventListener('submit', async (e) => {
     p_bud_classic_gold: Number(document.getElementById('bud_classic_gold').value),
     p_blackgold_1l: Number(document.getElementById('blackgold_1l').value),
     p_blackgold_500: Number(document.getElementById('blackgold_500').value),
+    p_blackgold_600: Number(document.getElementById('blackgold_600').value),
     p_blackgold_330: Number(document.getElementById('blackgold_330').value),
     p_blackgold_250: Number(document.getElementById('blackgold_250').value),
     p_other_abi: Number(document.getElementById('other_abi').value),
@@ -209,7 +212,7 @@ form.addEventListener('submit', async (e) => {
 
   if (error) {
     msg.className = 'msg err';
-    msg.textContent = '提交失败：' + error.message + '。请检查数据库是否已更新（运行过最新的 v2 脚本），或稍后重试。';
+    msg.textContent = '提交失败：' + error.message + '。请检查数据库是否已运行「新增黑金600瓶」的更新脚本，或稍后重试。';
     return;
   }
 
@@ -221,7 +224,7 @@ form.addEventListener('submit', async (e) => {
       ['门店', data.store_name], ['M3', data.m3], ['活动日期', data.activity_date], ['SPR姓名', data.spr_name],
       ['开台赠饮', data.mechanism1], ['点购加赠', data.mechanism2], ['其他机制', data.mechanism3], ['大桌锁定', data.mechanism4],
       ['赠品黑金255罐（自动）', data.gift_255_cans],
-      ['百威家族（不含黑金）', data.bud_classic_gold], ['黑金1L罐', data.blackgold_1l], ['黑金500瓶', data.blackgold_500], ['黑金330罐', data.blackgold_330], ['黑金250瓶', data.blackgold_250], ['黑金合计（自动）', data.blackgold_total], ['其他（科罗娜/哈啤等）', data.other_abi],
+      ['百威家族（不含黑金）', data.bud_classic_gold], ['黑金1L罐', data.blackgold_1l], ['黑金500瓶', data.blackgold_500], ['黑金600瓶', data.blackgold_600], ['黑金330罐', data.blackgold_330], ['黑金250瓶', data.blackgold_250], ['黑金合计（自动）', data.blackgold_total], ['其他（科罗娜/哈啤等）', data.other_abi],
       ['当晚ABI总销量（自动）', data.abi_total],
       ['重点竞品', data.key_competitor], ['其他竞品', data.other_competitor],
       ['当晚竞品总销量（自动）', data.competitor_total],
