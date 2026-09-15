@@ -41,6 +41,21 @@
   .cur tr:last-child td{border-bottom:none;}
   .cur td:last-child{text-align:right;font-weight:600;color:#8a6d1f;}
   .hint{font-size:12px;color:var(--muted);margin-top:14px;line-height:1.7;text-align:center;}
+  .tip{font-size:12px;margin-top:6px;line-height:1.6;}
+  .tip.warn{color:#b3382b;}
+  .tip.ok{color:#1d7a44;}
+  .mask{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;align-items:center;justify-content:center;padding:18px;}
+  .mask.show{display:flex;}
+  .dlg{background:#fff;border-radius:14px;max-width:430px;width:100%;padding:18px;max-height:82vh;overflow:auto;}
+  .dlg h3{font-size:16px;color:#23211c;margin-bottom:10px;}
+  .dlg .body{font-size:13px;color:#555;line-height:1.7;}
+  .dlg table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px;}
+  .dlg td,.dlg th{border:1px solid #e7e0cd;padding:6px 8px;text-align:right;}
+  .dlg td:first-child,.dlg th:first-child{text-align:left;color:#555;}
+  .dlg th{background:#faf7ee;}
+  .dlg .btns{display:flex;gap:8px;margin-top:14px;}
+  .dlg button{flex:1;padding:11px 6px;border-radius:10px;border:1px solid #ddd;background:#fff;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;color:#555;}
+  .dlg button.primary{background:linear-gradient(135deg,#b8860b,#d4af37);color:#fff;border:none;}
 </style>
 </head>
 <body>
@@ -49,12 +64,14 @@
   <div class="sub">SPR 数据填写 · 9/4-10/19 活动执行数据汇总</div>
 </div>
 <form id="sprForm" class="wrap" autocomplete="off">
-  <div class="notice">带 <b style="color:#b3382b">*</b> 号为必填；标注「自动」的数值由系统计算，<b>无需填写</b>。提交后数字会自动累加，同一门店同一天重复提交请放心。</div>
+  <div class="notice">带 <b style="color:#b3382b">*</b> 号为必填；标注「自动」的数值由系统计算，<b>无需填写</b>。若该门店当天已有数据，提交时会让你选择 <b>追加</b>（在原数上累加）或 <b>覆盖</b>（以本次为准），不会再悄悄累加。</div>
 
   <div class="sec">
     <h2><span class="no">1</span>门店信息</h2>
     <label for="store">门店名称 <span class="req">*</span></label>
-    <input type="text" id="store" placeholder="填写门店名称" required maxlength="50">
+    <input type="text" id="store" list="storeList" placeholder="输入关键字选门店，或填新门店" required maxlength="50">
+    <datalist id="storeList"></datalist>
+    <div class="tip" id="storeTip" style="display:none;"></div>
     <label for="m3">M3（区域负责人） <span class="req">*</span></label>
     <select id="m3" required>
       <option value="">请选择M3</option>
@@ -123,8 +140,10 @@
   <button class="submit" type="submit" id="btn">提交数据</button>
   <div class="msg" id="msg"></div>
   <div class="cur" id="cur"></div>
-  <div class="hint">提示：同一门店、同一活动日期再次提交时，数字会自动累加，姓名、M3 记录为最新填写。提交前请核对数字。</div>
+  <div class="hint">提示：同一门店、同一天重复提交时，系统会先显示已有数据，让你选择「追加」或「覆盖」，不会再直接累加。提交前请核对数字。</div>
 </form>
+
+<div class="mask" id="mask"><div class="dlg" id="dlg"></div></div>
 
 <script>
 /**
@@ -151,11 +170,76 @@ const SUPABASE_URL = 'https://mttxkqfeqtlpxilapqki.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10dHhrcWZlcXRscHhpbGFwcWtpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyNDQ1OTgsImV4cCI6MjEwMzgyMDU5OH0.YanNWOqKQ3j922XB3urE3sBqZgeFfSaz8NJhRArzT5o';
 // 默认活动日期（SPR 可以自己改）
 const DEFAULT_DATE = '2026-09-04';
+// 活动期范围：日期超出会被拦截（防日期选错）
+const ACT_START = '2026-09-04';
+const ACT_END = '2026-10-19';
+// 单个数字格上限（防手滑多打 0）
+const MAX_PER_FIELD = 999;
 // ==============================================================
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 document.getElementById('activityDate').value = DEFAULT_DATE;
+document.getElementById('activityDate').min = ACT_START;
+document.getElementById('activityDate').max = ACT_END;
+
+/* ============ 防错 1：门店名联想（历史填报名单），防止同店写法不统一 ============ */
+const KNOWN_STORES = new Set();
+const storeTip = document.getElementById('storeTip');
+(async function loadStoreNames() {
+  try {
+    const PAGE = 1000;
+    for (let off = 0; off < 50000; off += PAGE) {
+      const { data, error } = await supabaseClient.from('spr_records')
+        .select('store_name')
+        .order('store_name', { ascending: true })
+        .range(off, off + PAGE - 1);
+      if (error || !data || !data.length) break;
+      data.forEach(r => { if (r.store_name) KNOWN_STORES.add(r.store_name.trim()); });
+      if (data.length < PAGE) break;
+    }
+  } catch (e) { /* 名单拉不到不影响填写，只影响联想 */ }
+  document.getElementById('storeList').innerHTML =
+    [...KNOWN_STORES].sort().map(s => '<option value="' + s.replace(/"/g, '&quot;') + '">').join('');
+})();
+document.getElementById('store').addEventListener('input', function () {
+  const v = this.value.trim();
+  storeTip.style.display = 'none';
+  if (!v || !KNOWN_STORES.size) return;
+  if (KNOWN_STORES.has(v)) {
+    storeTip.textContent = '✓ 与历史填报的门店名完全一致';
+    storeTip.className = 'tip ok';
+  } else {
+    storeTip.textContent = '「' + v + '」不在历史名单里 —— 新门店请忽略；老门店请检查写法是否和以前一致（门店名是数据的唯一标识，写法不同会被当成两家店）。';
+    storeTip.className = 'tip warn';
+  }
+  storeTip.style.display = 'block';
+});
+
+/* ============ 防错 2：提交前校验 + 重复提交时选「追加 / 覆盖」 ============ */
+const NUM_FIELDS = [
+  ['mechanism1', '机制1·开台赠饮'], ['mechanism2', '机制2·点购加赠'], ['mechanism3', '机制3·其他机制'], ['mechanism4', '机制4·大桌锁定'],
+  ['bud_classic_gold', '百威家族'], ['blackgold_1l', '黑金1L罐'], ['blackgold_500', '黑金500瓶'], ['blackgold_600', '黑金600瓶'],
+  ['blackgold_330', '黑金330罐'], ['blackgold_250', '黑金250瓶'], ['other_abi', '其他百威'],
+  ['key_competitor', '重点竞品'], ['other_competitor', '其他竞品']
+];
+
+function askChoice(title, bodyHtml, buttons) {
+  return new Promise(resolve => {
+    const mask = document.getElementById('mask'), dlg = document.getElementById('dlg');
+    dlg.innerHTML = '<h3>' + title + '</h3><div class="body">' + bodyHtml + '</div><div class="btns"></div>';
+    const bt = dlg.querySelector('.btns');
+    buttons.forEach(b => {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.textContent = b.text;
+      if (b.primary) el.className = 'primary';
+      el.addEventListener('click', () => { mask.classList.remove('show'); resolve(b.value); });
+      bt.appendChild(el);
+    });
+    mask.classList.add('show');
+  });
+}
 
 // 自动计算
 function calc() {
@@ -184,40 +268,119 @@ form.addEventListener('submit', async (e) => {
   msg.textContent = '';
   cur.className = 'cur';
 
+  /* ---- 防错校验：日期范围 + 数字合法性 ---- */
+  const storeVal = document.getElementById('store').value.trim();
+  const dateVal = document.getElementById('activityDate').value;
+  const problems = [];
+  if (dateVal && (dateVal < ACT_START || dateVal > ACT_END)) {
+    problems.push('活动日期必须是 ' + ACT_START + ' ~ ' + ACT_END + ' 之间（现在填的是 ' + dateVal + '）');
+  }
+  const nums = {};
+  NUM_FIELDS.forEach(([id, label]) => {
+    const raw = document.getElementById(id).value.trim();
+    if (raw === '') { nums[id] = 0; return; }
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 0) {
+      problems.push('「' + label + '」填了 “' + raw + '”，必须是 ≥0 的整数');
+    } else if (n > MAX_PER_FIELD) {
+      problems.push('「' + label + '」填了 ' + n + '，超过单格上限 ' + MAX_PER_FIELD + '，是不是多打了 0？');
+    } else {
+      nums[id] = n;
+    }
+  });
+  if (problems.length) {
+    msg.className = 'msg err';
+    msg.innerHTML = '<b>请先修正：</b><br>· ' + problems.join('<br>· ');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
+
   const payload = {
-    p_store_name: document.getElementById('store').value.trim(),
+    p_store_name: storeVal,
     p_m3: document.getElementById('m3').value,
-    p_activity_date: document.getElementById('activityDate').value,
+    p_activity_date: dateVal,
     p_spr_name: document.getElementById('sprName').value.trim(),
-    p_mechanism1: Number(document.getElementById('mechanism1').value),
-    p_mechanism2: Number(document.getElementById('mechanism2').value),
-    p_mechanism3: Number(document.getElementById('mechanism3').value),
-    p_mechanism4: Number(document.getElementById('mechanism4').value),
-    p_bud_classic_gold: Number(document.getElementById('bud_classic_gold').value),
-    p_blackgold_1l: Number(document.getElementById('blackgold_1l').value),
-    p_blackgold_500: Number(document.getElementById('blackgold_500').value),
-    p_blackgold_600: Number(document.getElementById('blackgold_600').value),
-    p_blackgold_330: Number(document.getElementById('blackgold_330').value),
-    p_blackgold_250: Number(document.getElementById('blackgold_250').value),
-    p_other_abi: Number(document.getElementById('other_abi').value),
-    p_key_competitor: Number(document.getElementById('key_competitor').value),
-    p_other_competitor: Number(document.getElementById('other_competitor').value)
+    p_mechanism1: nums.mechanism1,
+    p_mechanism2: nums.mechanism2,
+    p_mechanism3: nums.mechanism3,
+    p_mechanism4: nums.mechanism4,
+    p_bud_classic_gold: nums.bud_classic_gold,
+    p_blackgold_1l: nums.blackgold_1l,
+    p_blackgold_500: nums.blackgold_500,
+    p_blackgold_600: nums.blackgold_600,
+    p_blackgold_330: nums.blackgold_330,
+    p_blackgold_250: nums.blackgold_250,
+    p_other_abi: nums.other_abi,
+    p_key_competitor: nums.key_competitor,
+    p_other_competitor: nums.other_competitor
   };
+
+  /* ---- 重复提交检测：同店同日已有数据时，让用户选 追加 / 覆盖 / 取消 ---- */
+  let mode = 'add';
+  let existing = null;
+  try {
+    const { data } = await supabaseClient.from('spr_records')
+      .select('*').eq('store_name', storeVal).eq('activity_date', dateVal).maybeSingle();
+    existing = data || null;
+  } catch (err) { existing = null; }
+
+  if (existing) {
+    const newGift = nums.mechanism1 + nums.mechanism2 + nums.mechanism3 + nums.mechanism4;
+    const newBg = nums.blackgold_1l + nums.blackgold_500 + nums.blackgold_600 + nums.blackgold_330 + nums.blackgold_250;
+    const newAbi = nums.bud_classic_gold + newBg + nums.other_abi;
+    const newComp = nums.key_competitor + nums.other_competitor;
+    const rows = [
+      ['赠品255罐（听）', existing.gift_255_cans, newGift],
+      ['黑金合计（瓶）', existing.blackgold_total, newBg],
+      ['ABI合计（瓶）', existing.abi_total, newAbi],
+      ['竞品合计（瓶）', existing.competitor_total, newComp],
+      ['啤酒合计（瓶）', existing.beer_total, newAbi + newComp]
+    ];
+    const table = '<table><tr><th>项目</th><th>已有</th><th>本次</th></tr>' +
+      rows.map(r => '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[2] + '</td></tr>').join('') +
+      '</table>';
+    const choice = await askChoice('该门店当天已有数据',
+      '<p><b>' + storeVal + '</b> · ' + dateVal + '</p>' + table +
+      '<p><b>追加</b>=两套数字相加（适合分几批填报）；<b>覆盖</b>=丢弃已有，以本次为准（适合填错重填）。</p>',
+      [
+        { text: '追加（累加）', value: 'add', primary: true },
+        { text: '覆盖（重填）', value: 'replace' },
+        { text: '取消', value: 'cancel' }
+      ]);
+    if (choice === 'cancel') return;
+    mode = choice;
+  }
 
   btn.disabled = true;
   btn.textContent = '提交中…';
-  const { data, error } = await supabaseClient.rpc('submit_spr_record', payload);
+
+  /* ---- 提交：优先走 v2（支持覆盖），数据库没升级时自动退回旧函数 ---- */
+  let data = null, error = null;
+  const res = await supabaseClient.rpc('submit_spr_record2', Object.assign({ p_mode: mode }, payload));
+  if (res.error && /Could not find the function|PGRST202|42883/i.test(String(res.error.message) + ' ' + String(res.error.code || ''))) {
+    if (mode === 'replace') {
+      error = { message: '数据库还没升级，暂时无法「覆盖」。请把 supabase_admin.sql 发给管理员在 Supabase SQL Editor 执行一次。' };
+    } else {
+      const res2 = await supabaseClient.rpc('submit_spr_record', payload);
+      data = res2.data; error = res2.error;
+    }
+  } else {
+    data = res.data; error = res.error;
+  }
+
   btn.disabled = false;
   btn.textContent = '提交数据';
 
   if (error) {
     msg.className = 'msg err';
-    msg.textContent = '提交失败：' + error.message + '。请检查数据库是否已运行「新增黑金600瓶」的更新脚本，或稍后重试。';
+    msg.textContent = '提交失败：' + error.message + '。请检查数字后重试，或联系管理员。';
     return;
   }
 
   msg.className = 'msg ok';
-  msg.textContent = '提交成功！数字已累加到数据库。';
+  msg.textContent = mode === 'replace'
+    ? '提交成功！该门店当天数据已覆盖为本次填写。'
+    : '提交成功！数字已累加到数据库。';
 
   if (data) {
     const LABELS = [
