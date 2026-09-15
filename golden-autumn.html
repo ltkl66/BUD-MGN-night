@@ -299,7 +299,7 @@ function render(){
 
   const maxM3 = Math.max.apply(null, DATA.m3.map(m => m.caps).concat([1]));
   document.getElementById('race').innerHTML =
-    '<h2>累计扫码盖数量 · 三人对比</h2>' +
+    '<h2>累计扫码盖数量</h2>' +
     DATA.m3.map(m =>
       '<div class="rl"><div class="top"><span class="nm">' + esc(m.name) +
       '</span><span class="vl">' + fmt(m.caps) + '<i>盖</i></span></div>' +
