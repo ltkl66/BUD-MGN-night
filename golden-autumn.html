@@ -14,6 +14,10 @@
   .hero .meta{margin-top:12px;font-size:12px;color:#a99a70;letter-spacing:.5px;}
   .back{position:absolute;left:12px;top:12px;color:#c9bd96;font-size:12px;text-decoration:none;border:1px solid #4a4028;border-radius:20px;padding:4px 11px;}
   .back:hover{color:#f0d97a;}
+  .dl{position:absolute;right:12px;top:12px;background:linear-gradient(135deg,#e8c85a,#b8860b);color:#241c08;border:none;font-family:inherit;font-size:12px;font-weight:800;letter-spacing:.5px;border-radius:20px;padding:5px 13px;cursor:pointer;box-shadow:0 2px 7px rgba(0,0,0,.28);}
+  .dl:hover{filter:brightness(1.08);}
+  .dl:active{transform:translateY(1px);}
+  .dl:disabled{opacity:.6;cursor:default;}
 
   .wrap{max-width:900px;margin:0 auto;padding:18px 14px 0;}
 
@@ -89,6 +93,7 @@
 <body>
 <div class="hero">
   <a class="back" href="index.html">← 首页</a>
+  <button class="dl" id="dlBtn" title="下载全部榜单门店明细（含名次、销售经理、扫码盖数量）">📥 下载榜单 Excel</button>
   <h1>金 秋 卖 黑 金</h1>
   <div class="slogan">多 卖 多 吸 金</div>
   <div class="meta" id="meta"></div>
@@ -103,7 +108,155 @@
 </div>
 
 <script>
-const DATA = {"start": "2026-09-14", "through": "2026-09-14", "generatedAt": "2026-09-15 16:58", "totalCaps": 1427, "m3": [{"name": "肖志奇", "city": "杭州市", "stores": 18, "caps": 431, "list": [{"store": "农家土菜馆", "caps": 259}, {"store": "周姐焦烤鸡架东北烧烤夜宵", "caps": 40}, {"store": "潮庭海鲜餐厅", "caps": 34}, {"store": "胖子烧烤", "caps": 25}, {"store": "会客小厨", "caps": 17}, {"store": "叶三姐大排档", "caps": 15}, {"store": "渝地人家(华丰店)", "caps": 11}, {"store": "重庆正宗万州烤鱼", "caps": 6}, {"store": "山上的羊", "caps": 5}, {"store": "满堂红·欢喜大排档(滨江宝龙店)", "caps": 5}, {"store": "胖子食府（婺江路）", "caps": 3}, {"store": "衢州农家正宗野生鱼", "caps": 3}, {"store": "东海渔府台舟小海鲜", "caps": 2}, {"store": "匠炉(万邦大楼店)", "caps": 2}, {"store": "李真炭·鲜货烧烤", "caps": 1}, {"store": "湘宴", "caps": 1}, {"store": "猫公子纸上烤鱼·鲜货烧烤·江湖菜", "caps": 1}, {"store": "赛汗荣羊·蒙式火锅", "caps": 1}]}, {"name": "蒋杭生", "city": "金华市", "stores": 12, "caps": 352, "list": [{"store": "新丁香·海鲜宴(新纪元大厦店)", "caps": 92}, {"store": "小东哥东北大油边地摊烧烤", "caps": 63}, {"store": "稠江宴", "caps": 55}, {"store": "老桥头大排档(银海小区一区店)", "caps": 48}, {"store": "铂金港澳门海鲜姿造", "caps": 30}, {"store": "云贵川大排档", "caps": 28}, {"store": "醉美春晗(春晗二区40幢)", "caps": 21}, {"store": "巡友记农家菜（大成醉串串）", "caps": 5}, {"store": "俏辣匠", "caps": 4}, {"store": "尔滨大油边·东北大串烧烤", "caps": 3}, {"store": "阿锋烧烤海鲜楼", "caps": 2}, {"store": "浙里海鲜面（温州浙里大排档）", "caps": 1}]}, {"name": "周联杉", "city": "宁波市", "stores": 66, "caps": 644, "list": [{"store": "老宋烧烤", "caps": 84}, {"store": "江西小炒", "caps": 68}, {"store": "佳成烧烤水饺店", "caps": 46}, {"store": "阿东龙虾烧烤", "caps": 40}, {"store": "山中无老虎鱼蛙火锅(宝龙广场店)", "caps": 30}, {"store": "宁海食府(镇海开元店)", "caps": 27}, {"store": "烧记公头牌甲鱼", "caps": 23}, {"store": "甬大师活龙虾徽州菜", "caps": 21}, {"store": "土灶头", "caps": 20}, {"store": "哈尔滨烧烤", "caps": 19}, {"store": "徽源餐饮", "caps": 15}, {"store": "宁海食府(南站店)", "caps": 14}, {"store": "东海渔港", "caps": 13}, {"store": "宁海食府(东部高新店)", "caps": 13}, {"store": "老楼羊蝎子涮锅", "caps": 13}, {"store": "犟牛潘记鲜牛肉火锅", "caps": 12}, {"store": "辣妹子(阳光丽园三期店)", "caps": 12}, {"store": "宁海食府(鼓楼孝闻店)", "caps": 11}, {"store": "麦香牛肉面", "caps": 11}, {"store": "衢州私坊菜", "caps": 10}, {"store": "宁海食府四明中路店", "caps": 9}, {"store": "湘君府湘菜馆(滨海店)", "caps": 8}, {"store": "台州排挡（启运路）", "caps": 7}, {"store": "台州饭店", "caps": 7}, {"store": "阿琴家常菜(石矸店)", "caps": 7}, {"store": "东北菜饺子馆", "caps": 6}, {"store": "衢老三", "caps": 6}, {"store": "锅得好长丰1号", "caps": 6}, {"store": "大李小吃", "caps": 5}, {"store": "香汉子重庆老火锅(海曙藕缆桥店)", "caps": 5}, {"store": "鸡毛兑糖·普宴(天一店)", "caps": 5}, {"store": "七里香龙虾衢州人家", "caps": 4}, {"store": "四海龙虾王(洪塘中路店)", "caps": 4}, {"store": "湘记烧烤", "caps": 4}, {"store": "破摊儿野串", "caps": 4}, {"store": "衢州土菜馆（东裕店）", "caps": 4}, {"store": "东北菜(交叉口）", "caps": 3}, {"store": "叁禾龙虾", "caps": 3}, {"store": "小辣椒私房菜（雅源工业区）", "caps": 3}, {"store": "山中无老虎·鱼蛙火锅(鄞州店)", "caps": 3}, {"store": "新湘潮宴", "caps": 3}, {"store": "阿栋排挡", "caps": 3}, {"store": "黑石BLACKSTONE(旗舰店)", "caps": 3}, {"store": "上河餐厅", "caps": 2}, {"store": "农家小炒", "caps": 2}, {"store": "华光酒楼", "caps": 2}, {"store": "宁海食府(望京路店)", "caps": 2}, {"store": "独一味烧烤龙虾(横街南路店)", "caps": 2}, {"store": "衢味阁", "caps": 2}, {"store": "阜阳饭店", "caps": 2}, {"store": "三嫂饭店（雅源南路）", "caps": 1}, {"store": "东北菜馆(文教路店)", "caps": 1}, {"store": "何永光鲜牛肉馆(3号店)", "caps": 1}, {"store": "佳绿福餐馆（宁波市海曙翰平餐馆）", "caps": 1}, {"store": "新渔港夜宵", "caps": 1}, {"store": "湘记烧烤(宁波怡丰汇店)", "caps": 1}, {"store": "甬城家宴", "caps": 1}, {"store": "禧焰炭火烤肉", "caps": 1}, {"store": "老屋川菜(兴宁桥西店)", "caps": 1}, {"store": "菜场夜宵", "caps": 1}, {"store": "衢州土菜馆（建业街）", "caps": 1}, {"store": "贵州凉都黄牛肉馆（现贵州黄牛肉火锅）", "caps": 1}, {"store": "赣湘缘菜馆蝶缘路", "caps": 1}, {"store": "辣得叫轻纺城店", "caps": 1}, {"store": "隆悦东北菜手工鲜饺", "caps": 1}, {"store": "鹏飞饭店(陈姜线店)", "caps": 1}]}]};
+const DATA = {"start": "2026-09-14", "through": "2026-09-14", "generatedAt": "2026-09-15 17:09", "totalCaps": 1427, "m3": [{"name": "肖志奇", "city": "杭州市", "stores": 18, "caps": 431, "list": [{"store": "农家土菜馆", "caps": 259}, {"store": "周姐焦烤鸡架东北烧烤夜宵", "caps": 40}, {"store": "潮庭海鲜餐厅", "caps": 34}, {"store": "胖子烧烤", "caps": 25}, {"store": "会客小厨", "caps": 17}, {"store": "叶三姐大排档", "caps": 15}, {"store": "渝地人家(华丰店)", "caps": 11}, {"store": "重庆正宗万州烤鱼", "caps": 6}, {"store": "山上的羊", "caps": 5}, {"store": "满堂红·欢喜大排档(滨江宝龙店)", "caps": 5}, {"store": "胖子食府（婺江路）", "caps": 3}, {"store": "衢州农家正宗野生鱼", "caps": 3}, {"store": "东海渔府台舟小海鲜", "caps": 2}, {"store": "匠炉(万邦大楼店)", "caps": 2}, {"store": "李真炭·鲜货烧烤", "caps": 1}, {"store": "湘宴", "caps": 1}, {"store": "猫公子纸上烤鱼·鲜货烧烤·江湖菜", "caps": 1}, {"store": "赛汗荣羊·蒙式火锅", "caps": 1}]}, {"name": "蒋杭生", "city": "义乌市", "stores": 12, "caps": 352, "list": [{"store": "新丁香·海鲜宴(新纪元大厦店)", "caps": 92}, {"store": "小东哥东北大油边地摊烧烤", "caps": 63}, {"store": "稠江宴", "caps": 55}, {"store": "老桥头大排档(银海小区一区店)", "caps": 48}, {"store": "铂金港澳门海鲜姿造", "caps": 30}, {"store": "云贵川大排档", "caps": 28}, {"store": "醉美春晗(春晗二区40幢)", "caps": 21}, {"store": "巡友记农家菜（大成醉串串）", "caps": 5}, {"store": "俏辣匠", "caps": 4}, {"store": "尔滨大油边·东北大串烧烤", "caps": 3}, {"store": "阿锋烧烤海鲜楼", "caps": 2}, {"store": "浙里海鲜面（温州浙里大排档）", "caps": 1}]}, {"name": "周联杉", "city": "宁波市", "stores": 66, "caps": 644, "list": [{"store": "老宋烧烤", "caps": 84}, {"store": "江西小炒", "caps": 68}, {"store": "佳成烧烤水饺店", "caps": 46}, {"store": "阿东龙虾烧烤", "caps": 40}, {"store": "山中无老虎鱼蛙火锅(宝龙广场店)", "caps": 30}, {"store": "宁海食府(镇海开元店)", "caps": 27}, {"store": "烧记公头牌甲鱼", "caps": 23}, {"store": "甬大师活龙虾徽州菜", "caps": 21}, {"store": "土灶头", "caps": 20}, {"store": "哈尔滨烧烤", "caps": 19}, {"store": "徽源餐饮", "caps": 15}, {"store": "宁海食府(南站店)", "caps": 14}, {"store": "东海渔港", "caps": 13}, {"store": "宁海食府(东部高新店)", "caps": 13}, {"store": "老楼羊蝎子涮锅", "caps": 13}, {"store": "犟牛潘记鲜牛肉火锅", "caps": 12}, {"store": "辣妹子(阳光丽园三期店)", "caps": 12}, {"store": "宁海食府(鼓楼孝闻店)", "caps": 11}, {"store": "麦香牛肉面", "caps": 11}, {"store": "衢州私坊菜", "caps": 10}, {"store": "宁海食府四明中路店", "caps": 9}, {"store": "湘君府湘菜馆(滨海店)", "caps": 8}, {"store": "台州排挡（启运路）", "caps": 7}, {"store": "台州饭店", "caps": 7}, {"store": "阿琴家常菜(石矸店)", "caps": 7}, {"store": "东北菜饺子馆", "caps": 6}, {"store": "衢老三", "caps": 6}, {"store": "锅得好长丰1号", "caps": 6}, {"store": "大李小吃", "caps": 5}, {"store": "香汉子重庆老火锅(海曙藕缆桥店)", "caps": 5}, {"store": "鸡毛兑糖·普宴(天一店)", "caps": 5}, {"store": "七里香龙虾衢州人家", "caps": 4}, {"store": "四海龙虾王(洪塘中路店)", "caps": 4}, {"store": "湘记烧烤", "caps": 4}, {"store": "破摊儿野串", "caps": 4}, {"store": "衢州土菜馆（东裕店）", "caps": 4}, {"store": "东北菜(交叉口）", "caps": 3}, {"store": "叁禾龙虾", "caps": 3}, {"store": "小辣椒私房菜（雅源工业区）", "caps": 3}, {"store": "山中无老虎·鱼蛙火锅(鄞州店)", "caps": 3}, {"store": "新湘潮宴", "caps": 3}, {"store": "阿栋排挡", "caps": 3}, {"store": "黑石BLACKSTONE(旗舰店)", "caps": 3}, {"store": "上河餐厅", "caps": 2}, {"store": "农家小炒", "caps": 2}, {"store": "华光酒楼", "caps": 2}, {"store": "宁海食府(望京路店)", "caps": 2}, {"store": "独一味烧烤龙虾(横街南路店)", "caps": 2}, {"store": "衢味阁", "caps": 2}, {"store": "阜阳饭店", "caps": 2}, {"store": "三嫂饭店（雅源南路）", "caps": 1}, {"store": "东北菜馆(文教路店)", "caps": 1}, {"store": "何永光鲜牛肉馆(3号店)", "caps": 1}, {"store": "佳绿福餐馆（宁波市海曙翰平餐馆）", "caps": 1}, {"store": "新渔港夜宵", "caps": 1}, {"store": "湘记烧烤(宁波怡丰汇店)", "caps": 1}, {"store": "甬城家宴", "caps": 1}, {"store": "禧焰炭火烤肉", "caps": 1}, {"store": "老屋川菜(兴宁桥西店)", "caps": 1}, {"store": "菜场夜宵", "caps": 1}, {"store": "衢州土菜馆（建业街）", "caps": 1}, {"store": "贵州凉都黄牛肉馆（现贵州黄牛肉火锅）", "caps": 1}, {"store": "赣湘缘菜馆蝶缘路", "caps": 1}, {"store": "辣得叫轻纺城店", "caps": 1}, {"store": "隆悦东北菜手工鲜饺", "caps": 1}, {"store": "鹏飞饭店(陈姜线店)", "caps": 1}]}]};
+
+/* ============ 纯前端 XLSX 生成器（无第三方依赖，支持多工作表） ============ */
+function xlsxEscapeXml(s) {
+  return String(s).replace(/[<>&'"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&apos;','"':'&quot;'}[c]));
+}
+let _crcTbl = null;
+function xlsxCrc32(buf) {
+  if (!_crcTbl) {
+    _crcTbl = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      _crcTbl[n] = c >>> 0;
+    }
+  }
+  let crc = 0xFFFFFFFF;
+  for (let i = 0; i < buf.length; i++) crc = _crcTbl[(crc ^ buf[i]) & 0xFF] ^ (crc >>> 8);
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+function xlsxZip(entries) {
+  const enc = new TextEncoder();
+  const parts = [], central = [];
+  let offset = 0;
+  entries.forEach(e => {
+    const name = enc.encode(e.name);
+    const data = e.data;
+    const crc = xlsxCrc32(data);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0, true);
+    lh.setUint16(8, 0, true); lh.setUint16(10, 0, true); lh.setUint16(12, 0x5D27, true);
+    lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true);
+    lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+    parts.push(new Uint8Array(lh.buffer), name, data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true);
+    ch.setUint16(8, 0, true); ch.setUint16(10, 0, true); ch.setUint16(12, 0, true); ch.setUint16(14, 0x5D27, true);
+    ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true);
+    ch.setUint16(28, name.length, true); ch.setUint16(30, 0, true); ch.setUint16(32, 0, true);
+    ch.setUint16(34, 0, true); ch.setUint16(36, 0, true); ch.setUint32(38, 0, true);
+    ch.setUint32(42, offset, true);
+    central.push(new Uint8Array(ch.buffer), name);
+    offset += 30 + name.length + data.length;
+  });
+  const cdStart = parts.reduce((s, p) => s + p.length, 0);
+  const cdSize = central.reduce((s, p) => s + p.length, 0);
+  const eocd = new DataView(new ArrayBuffer(22));
+  eocd.setUint32(0, 0x06054b50, true); eocd.setUint16(4, 0, true); eocd.setUint16(6, 0, true);
+  eocd.setUint16(8, entries.length, true); eocd.setUint16(10, entries.length, true);
+  eocd.setUint32(12, cdSize, true); eocd.setUint32(16, cdStart, true); eocd.setUint16(20, 0, true);
+  const out = [];
+  parts.forEach(p => out.push(p)); central.forEach(p => out.push(p)); out.push(new Uint8Array(eocd.buffer));
+  const total = out.reduce((s, p) => s + p.length, 0);
+  const res = new Uint8Array(total);
+  let o = 0;
+  out.forEach(p => { res.set(p, o); o += p.length; });
+  return res;
+}
+function xlsxColName(i) {
+  let s = ''; i += 1;
+  while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); }
+  return s;
+}
+// sheets: [{name, headers, rows}]
+function makeXlsx(sheets) {
+  const esc = xlsxEscapeXml;
+  const enc = new TextEncoder();
+  const entries = [], typeOv = [], rels = [];
+  sheets.forEach((sh, si) => {
+    const n = si + 1;
+    let sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+    sheet += '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>';
+    sheet += '<row r="1">';
+    sh.headers.forEach((h, i) => {
+      sheet += '<c r="' + xlsxColName(i) + '1" s="1" t="inlineStr"><is><t xml:space="preserve">' + esc(h) + '</t></is></c>';
+    });
+    sheet += '</row>';
+    let r = 2;
+    sh.rows.forEach(row => {
+      sheet += '<row r="' + r + '">';
+      for (let i = 0; i < sh.headers.length; i++) {
+        const v = row[i];
+        if (v === null || v === undefined || v === '') continue;
+        const c = xlsxColName(i) + r;
+        if (typeof v === 'number' && isFinite(v)) {
+          sheet += '<c r="' + c + '"><v>' + v + '</v></c>';
+        } else {
+          sheet += '<c r="' + c + '" t="inlineStr"><is><t xml:space="preserve">' + esc(v) + '</t></is></c>';
+        }
+      }
+      sheet += '</row>';
+      r++;
+    });
+    sheet += '</sheetData></worksheet>';
+    entries.push({ name: 'xl/worksheets/sheet' + n + '.xml', data: enc.encode(sheet) });
+    typeOv.push('<Override PartName="/xl/worksheets/sheet' + n + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>');
+    rels.push('<Relationship Id="rId' + n + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + n + '.xml"/>');
+  });
+
+  const stylesRid = 'rId' + (sheets.length + 1);
+  const contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+    '<Default Extension="xml" ContentType="application/xml"/>' +
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+    typeOv.join('') +
+    '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+    '</Types>';
+
+  const rootRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+    '</Relationships>';
+
+  const workbook = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+    '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+    '<sheets>' + sheets.map((sh, si) =>
+      '<sheet name="' + esc(sh.name) + '" sheetId="' + (si + 1) + '" r:id="rId' + (si + 1) + '"/>').join('') +
+    '</sheets></workbook>';
+
+  const wbRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    rels.join('') +
+    '<Relationship Id="' + stylesRid + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+    '</Relationships>';
+
+  const styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font>' +
+    '<font><b/><sz val="11"/><name val="Calibri"/></font></fonts>' +
+    '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' +
+    '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+    '<cellXfs count="2">' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+    '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+    '</cellXfs>' +
+    '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
+    '</styleSheet>';
+
+  return xlsxZip([
+    { name: '[Content_Types].xml', data: enc.encode(contentTypes) },
+    { name: '_rels/.rels', data: enc.encode(rootRels) },
+    { name: 'xl/workbook.xml', data: enc.encode(workbook) },
+    { name: 'xl/_rels/workbook.xml.rels', data: enc.encode(wbRels) },
+    { name: 'xl/styles.xml', data: enc.encode(styles) }
+  ].concat(entries));
+}
+/* ============ XLSX 生成器结束 ============ */
 
 const fmt = n => Number(n).toLocaleString('en-US');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -195,6 +348,70 @@ function render(){
 }
 
 render();
+
+/* ============ 下载榜单 Excel ============ */
+function exportRankExcel() {
+  const btn = document.getElementById('dlBtn');
+  btn.disabled = true;
+  const old = btn.textContent;
+  btn.textContent = '生成中…';
+
+  try {
+    // 1) 全场榜单：所有门店拉通排名
+    const all = [];
+    DATA.m3.forEach(m => m.list.forEach(x =>
+      all.push({ store: x.store, m3: m.name, city: m.city, caps: x.caps })));
+    all.sort((a, b) => b.caps - a.caps || a.store.localeCompare(b.store));
+
+    const sheetRank = {
+      name: '全场榜单',
+      headers: ['名次', '门店', '销售经理', '城市', '扫码盖数量', '备注'],
+      rows: all.map((x, i) => [i + 1, x.store, x.m3, x.city, x.caps, i < 5 ? 'TOP5' : ''])
+    };
+
+    // 2) 分经理汇总
+    const rows2 = DATA.m3.map(m => [
+      m.name, m.city, m.stores, m.caps,
+      DATA.totalCaps ? (Math.round(m.caps / DATA.totalCaps * 1000) / 10) + '%' : '0%'
+    ]);
+    rows2.push(['合计', '', DATA.m3.reduce((a, m) => a + m.stores, 0), DATA.totalCaps, '100%']);
+    const sheetM3 = {
+      name: '分经理汇总',
+      headers: ['销售经理', '城市', '有扫码门店数', '扫码盖数量', '盖数占比'],
+      rows: rows2
+    };
+
+    // 3) 口径说明
+    const sheetNote = {
+      name: '统计口径',
+      headers: ['项目', '说明'],
+      rows: [
+        ['榜单名称', '金秋卖黑金 · 多卖多吸金'],
+        ['数据来源', 'DBOF 扫码明细'],
+        ['筛选条件', 'CIO 描述含「黑金」 且 M3 为 ' + DATA.m3.map(m => m.name).join(' / ')],
+        ['累计起点', DATA.start + '（活动首日）'],
+        ['数据截至', DATA.through],
+        ['统计指标', '扫码盖数量（按门店累计求和）'],
+        ['TOP5 口径', '全部门店拉通排名，前 5 名'],
+        ['页面生成时间', DATA.generatedAt]
+      ]
+    };
+
+    const bytes = makeXlsx([sheetRank, sheetM3, sheetNote]);
+    const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '金秋卖黑金榜单_' + String(DATA.through).replace(/-/g, '') + '.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1200);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = old;
+  }
+}
+
+document.getElementById('dlBtn').addEventListener('click', exportRankExcel);
 </script>
 </body>
 </html>
