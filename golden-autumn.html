@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>金秋卖黑金 · 多卖多吸金</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#f4f3ee;color:#23211c;font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;min-height:100vh;padding-bottom:44px;-webkit-text-size-adjust:100%;}
+
+  .hero{background:linear-gradient(120deg,#1d1a12,#3a2d10 60%,#1d1a12);color:#f0d97a;text-align:center;padding:30px 16px 24px;position:relative;}
+  .hero h1{font-size:27px;letter-spacing:7px;font-weight:800;}
+  .hero .slogan{margin-top:11px;font-size:15px;letter-spacing:5px;color:#e8c85a;font-weight:700;}
+  .hero .meta{margin-top:12px;font-size:12px;color:#a99a70;letter-spacing:.5px;}
+  .back{position:absolute;left:12px;top:12px;color:#c9bd96;font-size:12px;text-decoration:none;border:1px solid #4a4028;border-radius:20px;padding:4px 11px;}
+  .back:hover{color:#f0d97a;}
+
+  .wrap{max-width:900px;margin:0 auto;padding:18px 14px 0;}
+
+  .overview{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .ov{background:#fff;border-radius:13px;padding:15px 8px;text-align:center;border:1px solid #e7e0cd;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .ov .k{font-size:12px;color:#8a8265;letter-spacing:.5px;}
+  .ov .v{font-size:25px;font-weight:800;color:#b8860b;margin-top:5px;font-variant-numeric:tabular-nums;line-height:1.1;}
+  .ov .u{font-size:12px;font-weight:600;color:#b8860b;margin-left:2px;}
+  .ov.hl{background:linear-gradient(160deg,#fffdf5,#fdf3d8);border-color:#e6cf8a;}
+
+  .race{margin-top:16px;background:#fff;border-radius:13px;border:1px solid #e7e0cd;padding:15px 16px 9px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .race h2{font-size:13px;color:#8a8265;font-weight:600;letter-spacing:1px;margin-bottom:13px;}
+  .rl{margin-bottom:12px;}
+  .rl .top{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:5px;}
+  .rl .nm{font-weight:700;color:#3d3626;}
+  .rl .vl{font-weight:800;color:#b8860b;font-variant-numeric:tabular-nums;}
+  .rl .vl i{font-style:normal;font-size:11px;color:#a2946a;font-weight:600;margin-left:3px;}
+  .track{height:9px;background:#f0ece0;border-radius:6px;overflow:hidden;}
+  .fill{height:100%;border-radius:6px;background:linear-gradient(90deg,#d4af37,#b8860b);}
+
+  .board{margin-top:16px;background:#fff;border-radius:14px;border:1px solid #e7e0cd;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+  .board > header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:linear-gradient(120deg,#2a2415,#3d3212);color:#f0d97a;}
+  .m3name{font-size:17px;font-weight:800;letter-spacing:3px;}
+  .m3name .city{font-size:11px;font-weight:500;letter-spacing:0;color:#b8a878;margin-left:9px;}
+  .m3stat{font-size:12px;color:#c9bd96;font-variant-numeric:tabular-nums;}
+  .m3stat b{color:#f0d97a;font-weight:800;font-size:15px;margin:0 1px;}
+
+  ol.rank{list-style:none;}
+  ol.rank li{display:flex;align-items:center;gap:10px;padding:10px 16px 12px;border-bottom:1px solid #f2eee3;position:relative;}
+  ol.rank li:last-child{border-bottom:none;}
+  .no{flex:0 0 24px;height:24px;line-height:24px;text-align:center;border-radius:50%;background:#f0ece0;color:#8a8265;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .store{flex:1;min-width:0;font-size:14px;color:#3d3626;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .caps{flex:0 0 auto;font-size:15px;font-weight:700;color:#8a6d1f;font-variant-numeric:tabular-nums;}
+  .caps i{font-style:normal;font-size:11px;color:#a2946a;font-weight:500;margin-left:2px;}
+  .mini{position:absolute;left:0;bottom:0;height:3px;background:linear-gradient(90deg,#f0d97a,#d4af37);opacity:.5;}
+
+  li.top5{background:linear-gradient(90deg,#fffdf3,#fffaf0 60%,#fff);box-shadow:inset 4px 0 0 #d4af37;}
+  li.top5 .store{font-weight:800;color:#1f1b12;}
+  li.top5 .caps{font-size:17px;font-weight:900;color:#b8860b;letter-spacing:.3px;}
+  li.top5 .no{background:linear-gradient(135deg,#d4af37,#b8860b);color:#fff9e6;}
+  li.top5 .mini{opacity:.85;}
+
+  .more{display:block;width:100%;padding:12px;border:none;background:#faf7ee;color:#8a6d1f;font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer;font-family:inherit;border-top:1px solid #f2eee3;}
+  .more:hover{background:#f5f0e0;}
+  .hidden{display:none;}
+
+  .foot{margin-top:20px;text-align:center;color:#a29a80;font-size:11.5px;line-height:1.9;}
+  .foot b{color:#8a6d1f;}
+
+  @media (max-width:520px){
+    .hero h1{font-size:22px;letter-spacing:5px;}
+    .hero .slogan{font-size:13px;letter-spacing:3px;}
+    .ov .v{font-size:21px;}
+    .m3name{font-size:15px;}
+    ol.rank li{padding:9px 12px 11px;gap:8px;}
+    .store{font-size:13px;}
+  }
+</style>
+</head>
+<body>
+<div class="hero">
+  <a class="back" href="index.html">← 首页</a>
+  <h1>金 秋 卖 黑 金</h1>
+  <div class="slogan">多 卖 多 吸 金</div>
+  <div class="meta" id="meta"></div>
+</div>
+
+<div class="wrap">
+  <div class="overview" id="overview"></div>
+  <div class="race" id="race"></div>
+  <div id="boards"></div>
+  <div class="foot" id="foot"></div>
+</div>
+
+<script>
+const DATA = {"start": "2026-09-14", "through": "2026-09-14", "generatedAt": "2026-09-15 16:33", "totalCaps": 1427, "m3": [{"name": "肖志奇", "city": "杭州市", "stores": 18, "caps": 431, "list": [{"store": "农家土菜馆", "caps": 259}, {"store": "周姐焦烤鸡架东北烧烤夜宵", "caps": 40}, {"store": "潮庭海鲜餐厅", "caps": 34}, {"store": "胖子烧烤", "caps": 25}, {"store": "会客小厨", "caps": 17}, {"store": "叶三姐大排档", "caps": 15}, {"store": "渝地人家(华丰店)", "caps": 11}, {"store": "重庆正宗万州烤鱼", "caps": 6}, {"store": "山上的羊", "caps": 5}, {"store": "满堂红·欢喜大排档(滨江宝龙店)", "caps": 5}, {"store": "胖子食府（婺江路）", "caps": 3}, {"store": "衢州农家正宗野生鱼", "caps": 3}, {"store": "东海渔府台舟小海鲜", "caps": 2}, {"store": "匠炉(万邦大楼店)", "caps": 2}, {"store": "李真炭·鲜货烧烤", "caps": 1}, {"store": "湘宴", "caps": 1}, {"store": "猫公子纸上烤鱼·鲜货烧烤·江湖菜", "caps": 1}, {"store": "赛汗荣羊·蒙式火锅", "caps": 1}]}, {"name": "蒋杭生", "city": "金华市", "stores": 12, "caps": 352, "list": [{"store": "新丁香·海鲜宴(新纪元大厦店)", "caps": 92}, {"store": "小东哥东北大油边地摊烧烤", "caps": 63}, {"store": "稠江宴", "caps": 55}, {"store": "老桥头大排档(银海小区一区店)", "caps": 48}, {"store": "铂金港澳门海鲜姿造", "caps": 30}, {"store": "云贵川大排档", "caps": 28}, {"store": "醉美春晗(春晗二区40幢)", "caps": 21}, {"store": "巡友记农家菜（大成醉串串）", "caps": 5}, {"store": "俏辣匠", "caps": 4}, {"store": "尔滨大油边·东北大串烧烤", "caps": 3}, {"store": "阿锋烧烤海鲜楼", "caps": 2}, {"store": "浙里海鲜面（温州浙里大排档）", "caps": 1}]}, {"name": "周联杉", "city": "宁波市", "stores": 66, "caps": 644, "list": [{"store": "老宋烧烤", "caps": 84}, {"store": "江西小炒", "caps": 68}, {"store": "佳成烧烤水饺店", "caps": 46}, {"store": "阿东龙虾烧烤", "caps": 40}, {"store": "山中无老虎鱼蛙火锅(宝龙广场店)", "caps": 30}, {"store": "宁海食府(镇海开元店)", "caps": 27}, {"store": "烧记公头牌甲鱼", "caps": 23}, {"store": "甬大师活龙虾徽州菜", "caps": 21}, {"store": "土灶头", "caps": 20}, {"store": "哈尔滨烧烤", "caps": 19}, {"store": "徽源餐饮", "caps": 15}, {"store": "宁海食府(南站店)", "caps": 14}, {"store": "东海渔港", "caps": 13}, {"store": "宁海食府(东部高新店)", "caps": 13}, {"store": "老楼羊蝎子涮锅", "caps": 13}, {"store": "犟牛潘记鲜牛肉火锅", "caps": 12}, {"store": "辣妹子(阳光丽园三期店)", "caps": 12}, {"store": "宁海食府(鼓楼孝闻店)", "caps": 11}, {"store": "麦香牛肉面", "caps": 11}, {"store": "衢州私坊菜", "caps": 10}, {"store": "宁海食府四明中路店", "caps": 9}, {"store": "湘君府湘菜馆(滨海店)", "caps": 8}, {"store": "台州排挡（启运路）", "caps": 7}, {"store": "台州饭店", "caps": 7}, {"store": "阿琴家常菜(石矸店)", "caps": 7}, {"store": "东北菜饺子馆", "caps": 6}, {"store": "衢老三", "caps": 6}, {"store": "锅得好长丰1号", "caps": 6}, {"store": "大李小吃", "caps": 5}, {"store": "香汉子重庆老火锅(海曙藕缆桥店)", "caps": 5}, {"store": "鸡毛兑糖·普宴(天一店)", "caps": 5}, {"store": "七里香龙虾衢州人家", "caps": 4}, {"store": "四海龙虾王(洪塘中路店)", "caps": 4}, {"store": "湘记烧烤", "caps": 4}, {"store": "破摊儿野串", "caps": 4}, {"store": "衢州土菜馆（东裕店）", "caps": 4}, {"store": "东北菜(交叉口）", "caps": 3}, {"store": "叁禾龙虾", "caps": 3}, {"store": "小辣椒私房菜（雅源工业区）", "caps": 3}, {"store": "山中无老虎·鱼蛙火锅(鄞州店)", "caps": 3}, {"store": "新湘潮宴", "caps": 3}, {"store": "阿栋排挡", "caps": 3}, {"store": "黑石BLACKSTONE(旗舰店)", "caps": 3}, {"store": "上河餐厅", "caps": 2}, {"store": "农家小炒", "caps": 2}, {"store": "华光酒楼", "caps": 2}, {"store": "宁海食府(望京路店)", "caps": 2}, {"store": "独一味烧烤龙虾(横街南路店)", "caps": 2}, {"store": "衢味阁", "caps": 2}, {"store": "阜阳饭店", "caps": 2}, {"store": "三嫂饭店（雅源南路）", "caps": 1}, {"store": "东北菜馆(文教路店)", "caps": 1}, {"store": "何永光鲜牛肉馆(3号店)", "caps": 1}, {"store": "佳绿福餐馆（宁波市海曙翰平餐馆）", "caps": 1}, {"store": "新渔港夜宵", "caps": 1}, {"store": "湘记烧烤(宁波怡丰汇店)", "caps": 1}, {"store": "甬城家宴", "caps": 1}, {"store": "禧焰炭火烤肉", "caps": 1}, {"store": "老屋川菜(兴宁桥西店)", "caps": 1}, {"store": "菜场夜宵", "caps": 1}, {"store": "衢州土菜馆（建业街）", "caps": 1}, {"store": "贵州凉都黄牛肉馆（现贵州黄牛肉火锅）", "caps": 1}, {"store": "赣湘缘菜馆蝶缘路", "caps": 1}, {"store": "辣得叫轻纺城店", "caps": 1}, {"store": "隆悦东北菜手工鲜饺", "caps": 1}, {"store": "鹏飞饭店(陈姜线店)", "caps": 1}]}]};
+
+const fmt = n => Number(n).toLocaleString('en-US');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function render(){
+  document.getElementById('meta').textContent =
+    '活动期 ' + DATA.start.slice(5).replace('-', '/') + ' 起累计 · 数据更新至 ' + DATA.through.replace(/-/g, '/');
+
+  const totalStores = DATA.m3.reduce((a, m) => a + m.stores, 0);
+  document.getElementById('overview').innerHTML = [
+    ['参与销售经理', DATA.m3.length, '人'],
+    ['有扫码门店', totalStores, '家'],
+    ['扫码盖合计', DATA.totalCaps, '盖']
+  ].map(([k, v, u], i) =>
+    '<div class="ov' + (i === 2 ? ' hl' : '') + '"><div class="k">' + k + '</div><div class="v">' +
+    fmt(v) + '<span class="u">' + u + '</span></div></div>'
+  ).join('');
+
+  const maxM3 = Math.max.apply(null, DATA.m3.map(m => m.caps).concat([1]));
+  document.getElementById('race').innerHTML =
+    '<h2>累计扫码盖数量 · 三人对比</h2>' +
+    DATA.m3.map(m =>
+      '<div class="rl"><div class="top"><span class="nm">' + esc(m.name) +
+      '</span><span class="vl">' + fmt(m.caps) + '<i>盖</i></span></div>' +
+      '<div class="track"><div class="fill" style="width:' + Math.round(m.caps / maxM3 * 100) + '%"></div></div></div>'
+    ).join('');
+
+  document.getElementById('boards').innerHTML = DATA.m3.map((m, mi) => {
+    const max = Math.max.apply(null, m.list.map(x => x.caps).concat([1]));
+    const rows = m.list.map((x, i) =>
+      '<li class="' + (i < 5 ? 'top5' : '') + '">' +
+        '<span class="no">' + (i + 1) + '</span>' +
+        '<span class="store" title="' + esc(x.store) + '">' + esc(x.store) + '</span>' +
+        '<span class="caps">' + fmt(x.caps) + '<i>盖</i></span>' +
+        '<span class="mini" style="width:' + Math.max(2, Math.round(x.caps / max * 100)) + '%"></span>' +
+      '</li>'
+    ).join('');
+    const rest = Math.max(0, m.list.length - 10);
+    return '<section class="board">' +
+      '<header><div class="m3name">' + esc(m.name) + '<span class="city">' + esc(m.city) +
+      '</span></div><div class="m3stat"><b>' + m.stores + '</b>家门店 · <b>' + fmt(m.caps) + '</b>盖</div></header>' +
+      '<ol class="rank" id="rank-' + mi + '">' + rows + '</ol>' +
+      (rest ? '<button class="more" data-idx="' + mi + '" data-n="' + rest + '" data-open="0">展开其余 ' + rest + ' 家 ▾</button>' : '') +
+      '</section>';
+  }).join('');
+
+  document.querySelectorAll('ol.rank').forEach(ol => {
+    Array.prototype.forEach.call(ol.children, (li, i) => { if (i >= 10) li.classList.add('hidden'); });
+  });
+
+  document.querySelectorAll('.more').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const ol = document.getElementById('rank-' + btn.dataset.idx);
+      const open = btn.dataset.open === '1';
+      Array.prototype.forEach.call(ol.children, (li, i) => { if (i >= 10) li.classList.toggle('hidden', open); });
+      btn.dataset.open = open ? '0' : '1';
+      btn.textContent = open ? ('展开其余 ' + btn.dataset.n + ' 家 ▾') : '收起 ▴';
+    });
+  });
+
+  const top = DATA.m3.slice().sort((a, b) => b.caps - a.caps)[0];
+  document.getElementById('foot').innerHTML =
+    '数据来源：DBOF 扫码明细（CIO 描述含「黑金」，按 M3 归属销售经理）<br>' +
+    '统计口径：活动期 ' + DATA.start + ' 起累计扫码盖数量 · 数据更新至 ' + DATA.through + '<br>' +
+    '页面生成：<b>' + DATA.generatedAt + '</b> · 当前领先：<b>' + esc(top.name) + '</b>（' + fmt(top.caps) + ' 盖）';
+}
+
+render();
+</script>
+</body>
+</html>
