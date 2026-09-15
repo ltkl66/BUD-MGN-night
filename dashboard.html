@@ -38,6 +38,28 @@
   tr.total td{background:#f6e9c3;font-weight:700;color:#8a6d1f;border-top:2px solid #d8b95f;border-bottom:none;}
   .empty{color:var(--muted);text-align:center;padding:26px 0;font-size:14px;}
   .muted{color:var(--muted);font-size:12px;margin-top:8px;}
+
+  /* —— 明细行可点击编辑 —— */
+  #detailBody tr{cursor:pointer;}
+  #detailBody tr:hover{background:#fdf6e0;}
+  #detailBody tr td:first-child{position:relative;}
+
+  /* —— 编辑弹窗 —— */
+  .mask{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;align-items:center;justify-content:center;padding:16px;}
+  .mask.show{display:flex;}
+  .dlg{background:var(--card);border-radius:14px;max-width:560px;width:100%;padding:18px;max-height:88vh;overflow:auto;box-shadow:0 8px 30px rgba(0,0,0,.3);}
+  .dlg h3{font-size:16px;margin-bottom:4px;color:#23211c;}
+  .dlg .sub2{font-size:12px;color:var(--muted);margin-bottom:12px;}
+  .dlg .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  .dlg label{display:block;font-size:11px;color:var(--muted);margin:0 0 3px 2px;}
+  .dlg input,.dlg select{width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box;}
+  .dlg .totals{margin:10px 2px;font-size:12.5px;color:var(--muted);line-height:1.8;}
+  .dlg .totals b{color:#8a6d1f;}
+  .dlg .btns{display:flex;gap:8px;margin-top:14px;}
+  .dlg button{flex:1;padding:12px;border-radius:10px;border:1px solid var(--border);background:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;color:#555;}
+  .dlg button.primary{background:linear-gradient(135deg,#b8860b,#d4af37);color:#fff;border:none;}
+  .dlg .err2{display:none;margin-top:10px;padding:9px 11px;border-radius:8px;background:#fdeeec;border:1px solid #e5b4ad;color:#b3382b;font-size:13px;}
+  .dlg .err2.show{display:block;}
 </style>
 </head>
 <body>
@@ -116,6 +138,7 @@
 
   <div class="card">
     <h2><span class="no">3</span>明细记录</h2>
+    <div class="muted" style="margin:0 2px 8px;">💡 点击任意明细行可直接修改这条数据（需管理密码），改完看板和导出自动更新。</div>
     <div class="tablebox">
       <table id="detailTable">
         <thead id="detailHead"></thead>
@@ -125,6 +148,8 @@
     <div class="empty" id="emptyTip">暂无数据</div>
   </div>
 </div>
+
+<div class="mask" id="mask"><div class="dlg" id="dlg"></div></div>
 
 <script>
 /**
@@ -454,13 +479,17 @@ function render() {
     addCells(m3Body.appendChild(document.createElement('tr')), cells);
   });
 
-  // 明细记录
+  // 明细记录（每行带索引，点击可编辑）
   const dBody = document.getElementById('detailBody');
   dBody.innerHTML = '';
-  rows.forEach(r => {
+  rows.forEach((r, idx) => {
     const cells = [r.store_name, r.m3 || '', r.activity_date, r.spr_name];
     NUM_KEYS.forEach(k => cells.push(Number(r[k]) || 0));
-    addCells(dBody.appendChild(document.createElement('tr')), cells);
+    const tr = document.createElement('tr');
+    tr.dataset.idx = idx;
+    tr.title = '点击修改这条数据';
+    addCells(tr, cells);
+    dBody.appendChild(tr);
   });
 
   // 统计
@@ -494,6 +523,131 @@ function exportDetailExcel() {
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1200);
 }
 
+/* ============ 点击明细行 → 直接修改该条数据 ============ */
+let editing = false;
+const EDIT_KEYS = [
+  'mechanism1', 'mechanism2', 'mechanism3', 'mechanism4',
+  'bud_classic_gold', 'blackgold_1l', 'blackgold_500', 'blackgold_600', 'blackgold_330', 'blackgold_250',
+  'other_abi', 'key_competitor', 'other_competitor'
+];
+const EDIT_LABELS = {
+  mechanism1: '机制1·开台赠饮(听)', mechanism2: '机制2·点购加赠(听)', mechanism3: '机制3·其他机制(听)', mechanism4: '机制4·大桌锁定(听)',
+  bud_classic_gold: '百威家族(瓶)', blackgold_1l: '黑金1L罐', blackgold_500: '黑金500瓶', blackgold_600: '黑金600瓶',
+  blackgold_330: '黑金330罐', blackgold_250: '黑金250瓶', other_abi: '其他百威(瓶)',
+  key_competitor: '重点竞品(瓶)', other_competitor: '其他竞品(瓶)'
+};
+const AUTO_KEYS = [
+  ['gift_255_cans', '赠品255罐'], ['blackgold_total', '黑金合计'], ['abi_total', 'ABI合计'],
+  ['competitor_total', '竞品合计'], ['beer_total', '啤酒合计']
+];
+
+function getAdminPin() {
+  let pin = localStorage.getItem('sprAdminPin');
+  if (!pin) {
+    pin = window.prompt('请输入管理密码（修改数据用）：', '') || '';
+    pin = pin.trim();
+    if (pin) localStorage.setItem('sprAdminPin', pin);
+  }
+  return pin;
+}
+
+function closeEditor() {
+  editing = false;
+  document.getElementById('mask').classList.remove('show');
+}
+
+async function openEditor(row) {
+  editing = true;
+  const dlg = document.getElementById('dlg');
+  dlg.innerHTML =
+    '<h3>修改数据</h3>' +
+    '<div class="sub2">' + String(row.store_name).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])) +
+    ' · ' + row.activity_date + '（门店与日期不可改；改门店名/合并写法请联系管理员走数据库）</div>' +
+    '<div class="grid">' +
+    '<div><label>M3</label><select id="e_m3">' +
+    ['肖志奇', '蒋杭生', '周联杉'].map(m =>
+      '<option value="' + m + '"' + (row.m3 === m ? ' selected' : '') + '>' + m + '</option>').join('') +
+    '</select></div>' +
+    '<div style="grid-column:span 2;"><label>SPR姓名</label><input id="e_spr" maxlength="20" value="' +
+    String(row.spr_name || '').replace(/"/g, '&quot;') + '"></div>' +
+    EDIT_KEYS.map(k =>
+      '<div><label>' + EDIT_LABELS[k] + '</label><input type="number" min="0" step="1" id="e_' + k + '" value="' +
+      (Number(row[k]) || 0) + '"></div>').join('') +
+    '</div>' +
+    '<div class="totals" id="e_totals"></div>' +
+    '<div class="err2" id="e_err"></div>' +
+    '<div class="btns">' +
+    '<button id="e_cancel">取消</button>' +
+    '<button id="e_save" class="primary">保存修改</button>' +
+    '</div>';
+
+  const calcT = () => {
+    const v = id => Math.max(0, Number(document.getElementById('e_' + id).value) || 0);
+    const gift = v('mechanism1') + v('mechanism2') + v('mechanism3') + v('mechanism4');
+    const bg = v('blackgold_1l') + v('blackgold_500') + v('blackgold_600') + v('blackgold_330') + v('blackgold_250');
+    const abi = v('bud_classic_gold') + bg + v('other_abi');
+    const comp = v('key_competitor') + v('other_competitor');
+    document.getElementById('e_totals').innerHTML =
+      '自动合计：赠品255罐 <b>' + gift + '</b> 听 · 黑金 <b>' + bg + '</b> 瓶 · ABI <b>' + abi + '</b> 瓶 · 竞品 <b>' + comp + '</b> 瓶 · 啤酒 <b>' + (abi + comp) + '</b> 瓶';
+  };
+  EDIT_KEYS.forEach(k => document.getElementById('e_' + k).addEventListener('input', calcT));
+  calcT();
+
+  document.getElementById('mask').classList.add('show');
+  document.getElementById('e_cancel').addEventListener('click', closeEditor);
+
+  document.getElementById('e_save').addEventListener('click', async () => {
+    const errBox = document.getElementById('e_err');
+    errBox.className = 'err2'; errBox.textContent = '';
+    const vals = {};
+    for (const k of EDIT_KEYS) {
+      const raw = document.getElementById('e_' + k).value.trim();
+      const n = Number(raw);
+      if (!Number.isInteger(n) || n < 0) {
+        errBox.textContent = '「' + EDIT_LABELS[k] + '」必须是 ≥0 的整数';
+        errBox.className = 'err2 show';
+        return;
+      }
+      vals[k] = n;
+    }
+    const pin = getAdminPin();
+    if (!pin) {
+      errBox.textContent = '未输入管理密码，未保存。';
+      errBox.className = 'err2 show';
+      return;
+    }
+    const saveBtn = document.getElementById('e_save');
+    saveBtn.disabled = true; saveBtn.textContent = '保存中…';
+    const res = await supabaseClient.rpc('update_spr_record', Object.assign({
+      p_store_name: row.store_name,
+      p_activity_date: row.activity_date,
+      p_pin: pin,
+      p_m3: document.getElementById('e_m3').value,
+      p_spr_name: document.getElementById('e_spr').value.trim()
+    }, Object.fromEntries(EDIT_KEYS.map(k => ['p_' + k, vals[k]]))));
+    saveBtn.disabled = false; saveBtn.textContent = '保存修改';
+
+    if (res.error) {
+      const m = String(res.error.message || '');
+      if (/管理密码/.test(m)) localStorage.removeItem('sprAdminPin');
+      errBox.textContent = /Could not find the function|PGRST202|42883/i.test(m)
+        ? '数据库还没升级（找不到 update_spr_record 函数）。请先在 Supabase SQL Editor 执行 supabase_admin.sql。'
+        : '保存失败：' + m;
+      errBox.className = 'err2 show';
+      return;
+    }
+    closeEditor();
+    loadData();
+  });
+}
+
+document.getElementById('detailBody').addEventListener('click', (e) => {
+  const tr = e.target.closest('tr');
+  if (!tr || tr.dataset.idx === undefined) return;
+  const row = allRows[Number(tr.dataset.idx)];
+  if (row) openEditor(row);
+});
+
 // 初始化表头
 buildHead(document.getElementById('totalHead'), ['门店','M3','活动日期','SPR']);
 buildHead(document.getElementById('storeHead'), ['门店','M3','SPR']);
@@ -508,7 +662,8 @@ document.getElementById('startDate').addEventListener('change', loadData);
 document.getElementById('endDate').addEventListener('change', loadData);
 
 loadFilters().then(loadData);
-setInterval(loadData, AUTO_REFRESH_MS);
+// 编辑弹窗打开期间暂停自动刷新，避免保存后被旧数据覆盖显示
+setInterval(() => { if (!editing) loadData(); }, AUTO_REFRESH_MS);
 </script>
 </body>
 </html>
