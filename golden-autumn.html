@@ -66,12 +66,28 @@
   .caps i{font-style:normal;font-size:11px;color:#a2946a;font-weight:500;margin-left:2px;}
   .mini{position:absolute;left:0;bottom:0;height:3px;background:linear-gradient(90deg,#f0d97a,#d4af37);opacity:.5;}
 
+  /* 二级高亮：各销售经理自己的 TOP5（浅金） */
+  li.m3top5{background:linear-gradient(90deg,#fffdf9,#fffcf4 60%,#fff);box-shadow:inset 4px 0 0 #eddfb4;}
+  li.m3top5 .store{font-weight:700;color:#2b2517;}
+  li.m3top5 .caps{font-weight:800;color:#a8791a;}
+  li.m3top5 .no{background:#f7ebc9;color:#8a6d1f;}
+  li.m3top5 .mini{opacity:.62;}
+  li.m3top5 .tag{flex:0 0 auto;font-size:10px;font-weight:800;color:#8a6d1f;background:#fdf6e0;border:1px solid #e9d59b;border-radius:4px;padding:1px 5px;letter-spacing:.5px;}
+
+  /* 一级高亮：本榜单 TOP5（强金，优先级最高） */
   li.top5{background:linear-gradient(90deg,#fffdf3,#fffaf0 60%,#fff);box-shadow:inset 4px 0 0 #d4af37;}
   li.top5 .store{font-weight:800;color:#1f1b12;}
   li.top5 .caps{font-size:17px;font-weight:900;color:#b8860b;letter-spacing:.3px;}
   li.top5 .no{background:linear-gradient(135deg,#d4af37,#b8860b);color:#fff9e6;}
   li.top5 .mini{opacity:.85;}
-  li.top5 .tag{flex:0 0 auto;font-size:10px;font-weight:800;color:#fff8e1;background:linear-gradient(135deg,#e0bc4a,#b8860b);border-radius:4px;padding:2px 5px;letter-spacing:.5px;}
+  li.top5 .tag{flex:0 0 auto;font-size:9.5px;font-weight:800;color:#fff8e1;background:linear-gradient(135deg,#e0bc4a,#b8860b);border-radius:4px;padding:2px 5px;letter-spacing:.2px;white-space:nowrap;}
+
+  /* 高亮图例 */
+  .legend{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:6px 18px;margin-top:13px;padding:9px 12px;background:#fff;border:1px solid #eee7d6;border-radius:11px;font-size:11.5px;color:#8a8265;}
+  .legend span{display:flex;align-items:center;gap:6px;white-space:nowrap;}
+  .legend i{display:inline-block;width:16px;height:11px;border-radius:3px;flex:0 0 auto;}
+  .legend i.g{background:linear-gradient(135deg,#e0bc4a,#b8860b);}
+  .legend i.m{background:#fffdf6;border:1px solid #e9d59b;box-shadow:inset 3px 0 0 #eddfb4;}
 
   .more{display:block;width:100%;padding:12px;border:none;background:#faf7ee;color:#8a6d1f;font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer;font-family:inherit;border-top:1px solid #f2eee3;}
   .more:hover{background:#f5f0e0;}
@@ -103,6 +119,10 @@
   <div class="overview" id="overview"></div>
   <div class="race" id="race"></div>
   <div class="crown" id="crown"></div>
+  <div class="legend">
+    <span><i class="g"></i>本榜单 TOP5（全局前 5，标注「本榜单Top5」）</span>
+    <span><i class="m"></i>各销售经理 TOP5（标注「TOP5」）</span>
+  </div>
   <div id="boards"></div>
   <div class="foot" id="foot"></div>
 </div>
@@ -297,7 +317,7 @@ function render(){
   crown.forEach(x => { topKeys[x.mi + ':' + x.i] = true; });
 
   document.getElementById('crown').innerHTML =
-    '<h2>全场 TOP 5 门店<span>' + allStores.length + ' 家拉通排名 · 按累计扫码盖数量</span></h2>' +
+    '<h2>全场 TOP 5 门店<span>' + allStores.length + ' 家拉通排名 · 前 5 名在下方各经理榜单标注「本榜单Top5」</span></h2>' +
     '<ol>' + crown.map((x, k) =>
       '<li><span class="rk">' + (k + 1) + '</span>' +
       '<span class="cs" title="' + esc(x.store) + '">' + esc(x.store) + '</span>' +
@@ -308,11 +328,16 @@ function render(){
   document.getElementById('boards').innerHTML = DATA.m3.map((m, mi) => {
     const max = Math.max.apply(null, m.list.map(x => x.caps).concat([1]));
     const rows = m.list.map((x, i) => {
-      const isTop = !!topKeys[mi + ':' + i];
-      return '<li class="' + (isTop ? 'top5' : '') + '">' +
+      const isGlobal = !!topKeys[mi + ':' + i];   // 本榜单（全局拉通）TOP5
+      const isM3Top = i < TOP_N;                  // 该销售经理自己的 TOP5（list 已按盖数降序）
+      // 两级高亮互斥：本榜单 TOP5 视觉优先级更高，命中时不再叠加经理级样式
+      const cls = isGlobal ? 'top5' : (isM3Top ? 'm3top5' : '');
+      const tag = isGlobal ? '<span class="tag">本榜单Top5</span>'
+                : (isM3Top ? '<span class="tag">TOP5</span>' : '');
+      return '<li class="' + cls + '">' +
         '<span class="no">' + (i + 1) + '</span>' +
         '<span class="store" title="' + esc(x.store) + '">' + esc(x.store) + '</span>' +
-        (isTop ? '<span class="tag">TOP5</span>' : '') +
+        tag +
         '<span class="caps">' + fmt(x.caps) + '<i>盖</i></span>' +
         '<span class="mini" style="width:' + Math.max(2, Math.round(x.caps / max * 100)) + '%"></span>' +
       '</li>';
@@ -344,6 +369,7 @@ function render(){
   document.getElementById('foot').innerHTML =
     '数据来源：DBOF 扫码明细（CIO 描述含「黑金」，按 M3 归属销售经理）<br>' +
     '统计口径：活动期 ' + DATA.start + ' 起累计扫码盖数量 · 数据更新至 ' + DATA.through + '<br>' +
+    '高亮口径：<b>深金</b>=本榜单 TOP5（全部门店拉通前 5）· <b>浅金</b>=各销售经理自身 TOP5<br>' +
     '页面生成：<b>' + DATA.generatedAt + '</b> · 当前领先：<b>' + esc(top.name) + '</b>（' + fmt(top.caps) + ' 盖）';
 }
 
@@ -357,16 +383,23 @@ function exportRankExcel() {
   btn.textContent = '生成中…';
 
   try {
-    // 1) 全场榜单：所有门店拉通排名
+    // 1) 全场榜单：所有门店拉通排名（同时带上各经理内部名次）
     const all = [];
     DATA.m3.forEach(m => m.list.forEach(x =>
       all.push({ store: x.store, m3: m.name, city: m.city, caps: x.caps })));
     all.sort((a, b) => b.caps - a.caps || a.store.localeCompare(b.store));
 
+    const m3Rank = {};
+    DATA.m3.forEach(m => m.list.forEach((x, i) => { m3Rank[m.name + '|' + x.store] = i + 1; }));
+
     const sheetRank = {
       name: '全场榜单',
-      headers: ['名次', '门店', '销售经理', '城市', '扫码盖数量', '备注'],
-      rows: all.map((x, i) => [i + 1, x.store, x.m3, x.city, x.caps, i < 5 ? 'TOP5' : ''])
+      headers: ['名次', '门店', '销售经理', '城市', '扫码盖数量', '经理内名次', '备注'],
+      rows: all.map((x, i) => {
+        const rk = m3Rank[x.m3 + '|' + x.store] || '';
+        const note = i < 5 ? '本榜单Top5' : (rk && rk <= 5 ? '经理Top5' : '');
+        return [i + 1, x.store, x.m3, x.city, x.caps, rk, note];
+      })
     };
 
     // 2) 分经理汇总
@@ -392,7 +425,8 @@ function exportRankExcel() {
         ['累计起点', DATA.start + '（活动首日）'],
         ['数据截至', DATA.through],
         ['统计指标', '扫码盖数量（按门店累计求和）'],
-        ['TOP5 口径', '全部门店拉通排名，前 5 名'],
+        ['本榜单TOP5 口径', '全部门店拉通排名前 5 名（备注「本榜单Top5」）'],
+        ['经理TOP5 口径', '各销售经理自身榜单排名前 5 名（备注「经理Top5」）'],
         ['页面生成时间', DATA.generatedAt]
       ]
     };
