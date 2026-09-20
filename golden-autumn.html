@@ -91,8 +91,9 @@
 
   .more{display:block;width:100%;padding:12px;border:none;background:#faf7ee;color:#8a6d1f;font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer;font-family:inherit;border-top:1px solid #f2eee3;}
   .more:hover{background:#f5f0e0;}
-  /* 必须带 ol.rank li 前缀，否则权重低于 `ol.rank li{display:flex}` 会失效 */
-  ol.rank li.hidden{display:none;}
+  /* 折叠行隐藏：必须带 ol.rank li 前缀，否则权重低于 `ol.rank li{display:flex}` 会失效。
+     实际折叠由 JS 内联 display 控制（见 render 末尾），此规则作为无 JS/降级时的兜底。 */
+  ol.rank li.hidden{display:none !important;}
 
   .foot{margin-top:20px;text-align:center;color:#a29a80;font-size:11.5px;line-height:1.9;}
   .foot b{color:#8a6d1f;}
@@ -352,15 +353,24 @@ function render(){
       '</section>';
   }).join('');
 
+  // 折叠：默认只显示前 FOLD 行，其余由「展开其余 N 家」按钮切换。
+  // ⚠️ 同时改 class 与内联 display —— 只靠 CSS 类曾因权重问题（.hidden 打不过 ol.rank li{display:flex}）
+  //    导致折叠失效、列表显示全量，这里用内联样式兜底，不再依赖 CSS 权重。
+  const FOLD = 10;
+  function setRowVisible(li, visible) {
+    li.classList.toggle('hidden', !visible);
+    li.style.display = visible ? '' : 'none';
+  }
   document.querySelectorAll('ol.rank').forEach(ol => {
-    Array.prototype.forEach.call(ol.children, (li, i) => { if (i >= 10) li.classList.add('hidden'); });
+    Array.prototype.forEach.call(ol.children, (li, i) => setRowVisible(li, i < FOLD));
   });
 
   document.querySelectorAll('.more').forEach(btn => {
     btn.addEventListener('click', () => {
       const ol = document.getElementById('rank-' + btn.dataset.idx);
       const open = btn.dataset.open === '1';
-      Array.prototype.forEach.call(ol.children, (li, i) => { if (i >= 10) li.classList.toggle('hidden', open); });
+      // open 记录「当前是否已展开」，切换时取反：展开态点一下收起，收起态点一下展开
+      Array.prototype.forEach.call(ol.children, (li, i) => { if (i >= FOLD) setRowVisible(li, !open); });
       btn.dataset.open = open ? '0' : '1';
       btn.textContent = open ? ('展开其余 ' + btn.dataset.n + ' 家 ▾') : '收起 ▴';
     });
