@@ -525,6 +525,11 @@ function exportDetailExcel() {
 
 /* ============ 点击明细行 → 直接修改该条数据 ============ */
 let editing = false;
+// M3 可选清单（与 survey.html 的 M3 下拉保持一致，改一处记得另一处一起改）
+const M3_OPTIONS = [
+  '肖志奇', '蒋杭生', '周联杉',
+  '杭嘉湖-湖州-陈德灿', '杭嘉湖-嘉兴-汤志红', '杭嘉湖-市郊-薛林'
+];
 const EDIT_KEYS = [
   'mechanism1', 'mechanism2', 'mechanism3', 'mechanism4',
   'bud_classic_gold', 'blackgold_1l', 'blackgold_500', 'blackgold_600', 'blackgold_330', 'blackgold_250',
@@ -565,7 +570,8 @@ async function openEditor(row) {
     ' · ' + row.activity_date + '（门店与日期不可改；改门店名/合并写法请联系管理员走数据库）</div>' +
     '<div class="grid">' +
     '<div><label>M3</label><select id="e_m3">' +
-    ['肖志奇', '蒋杭生', '周联杉'].map(m =>
+    // 若该行 M3 是清单外的历史值，也保留为待选项，避免保存时被悄悄改掉
+    (row.m3 && M3_OPTIONS.indexOf(row.m3) < 0 ? [row.m3] : []).concat(M3_OPTIONS).map(m =>
       '<option value="' + m + '"' + (row.m3 === m ? ' selected' : '') + '>' + m + '</option>').join('') +
     '</select></div>' +
     '<div style="grid-column:span 2;"><label>SPR姓名</label><input id="e_spr" maxlength="20" value="' +
