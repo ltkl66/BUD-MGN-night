@@ -561,14 +561,46 @@ function closeEditor() {
   document.getElementById('mask').classList.remove('show');
 }
 
+// 门店清单缓存（store_master）：{ M3: [门店名, ...] }
+let STORE_MASTER = null;
+async function ensureStoreMaster() {
+  if (STORE_MASTER) return STORE_MASTER;
+  const map = {};
+  try {
+    const PAGE = 1000;
+    for (let off = 0; off < 50000; off += PAGE) {
+      const { data, error } = await supabaseClient.from('store_master')
+        .select('store_name,m3,active').eq('active', true)
+        .order('store_name', { ascending: true })
+        .range(off, off + PAGE - 1);
+      if (error || !data || !data.length) break;
+      data.forEach(r => {
+        const m = String(r.m3 || '').trim(), s = String(r.store_name || '').trim();
+        if (!m || !s) return;
+        if (!map[m]) map[m] = [];
+        map[m].push(s);
+      });
+      if (data.length < PAGE) break;
+    }
+  } catch (e) { /* 表不存在/网络问题 → 清单为空，不影响改数 */ }
+  STORE_MASTER = map;
+  return map;
+}
+
+function isMissingFn(msg) {
+  return /Could not find the function|PGRST202|42883|schema cache/i.test(String(msg || ''));
+}
+
 async function openEditor(row) {
   editing = true;
   const dlg = document.getElementById('dlg');
   dlg.innerHTML =
     '<h3>修改数据</h3>' +
     '<div class="sub2">' + String(row.store_name).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])) +
-    ' · ' + row.activity_date + '（门店与日期不可改；改门店名/合并写法请联系管理员走数据库）</div>' +
+    ' · ' + row.activity_date + '（日期不可改；门店名可改 —— 改名相当于换一条主键，历史数字会跟着走）</div>' +
     '<div class="grid">' +
+    '<div style="grid-column:span 3;"><label>门店名</label><input id="e_store" maxlength="50" list="e_storeList" value="' +
+    String(row.store_name || '').replace(/"/g, '&quot;') + '"><datalist id="e_storeList"></datalist></div>' +
     '<div><label>M3</label><select id="e_m3">' +
     // 若该行 M3 是清单外的历史值，也保留为待选项，避免保存时被悄悄改掉
     (row.m3 && M3_OPTIONS.indexOf(row.m3) < 0 ? [row.m3] : []).concat(M3_OPTIONS).map(m =>
@@ -599,6 +631,19 @@ async function openEditor(row) {
   EDIT_KEYS.forEach(k => document.getElementById('e_' + k).addEventListener('input', calcT));
   calcT();
 
+  // 门店名联想：来自管理员维护的门店清单，按所选 M3 过滤
+  const master = await ensureStoreMaster();
+  const syncStoreList = () => {
+    const m3 = document.getElementById('e_m3').value;
+    const names = (master[m3] || []).slice();
+    const cur = document.getElementById('e_store').value.trim();
+    if (cur && names.indexOf(cur) < 0) names.unshift(cur);   // 当前值不在清单里也保留，避免被下拉改掉
+    document.getElementById('e_storeList').innerHTML =
+      names.map(n => '<option value="' + String(n).replace(/"/g, '&quot;') + '">').join('');
+  };
+  syncStoreList();
+  document.getElementById('e_m3').addEventListener('change', syncStoreList);
+
   document.getElementById('mask').classList.add('show');
   document.getElementById('e_cancel').addEventListener('click', closeEditor);
 
@@ -616,34 +661,82 @@ async function openEditor(row) {
       }
       vals[k] = n;
     }
+    const newStore = document.getElementById('e_store').value.trim();
+    if (!newStore) {
+      errBox.textContent = '门店名不能为空';
+      errBox.className = 'err2 show';
+      return;
+    }
     const pin = getAdminPin();
     if (!pin) {
       errBox.textContent = '未输入管理密码，未保存。';
       errBox.className = 'err2 show';
       return;
     }
+    const fail = (text) => { errBox.textContent = text; errBox.className = 'err2 show'; };
+
     const saveBtn = document.getElementById('e_save');
     saveBtn.disabled = true; saveBtn.textContent = '保存中…';
-    const res = await supabaseClient.rpc('update_spr_record', Object.assign({
-      p_store_name: row.store_name,
-      p_activity_date: row.activity_date,
+
+    // v2 函数：支持改门店名 + 冲突时可选覆盖
+    const payload2 = Object.assign({
       p_pin: pin,
+      p_old_store_name: row.store_name,
+      p_activity_date: row.activity_date,
+      p_new_store_name: newStore,
+      p_on_conflict: 'error',
       p_m3: document.getElementById('e_m3').value,
       p_spr_name: document.getElementById('e_spr').value.trim()
-    }, Object.fromEntries(EDIT_KEYS.map(k => ['p_' + k, vals[k]]))));
+    }, Object.fromEntries(EDIT_KEYS.map(k => ['p_' + k, vals[k]])));
+
+    let res = await supabaseClient.rpc('update_spr_record2', payload2);
+    let upgraded = !(res.error && isMissingFn(res.error.message));
+
+    if (!upgraded) {
+      // 数据库还没跑 v6 脚本：不改门店名时仍可用旧函数保存
+      if (newStore !== row.store_name) {
+        saveBtn.disabled = false; saveBtn.textContent = '保存修改';
+        fail('改门店名需要先在 Supabase SQL Editor 执行 supabase_store_admin.sql（数据库还没升级）。门店名未修改。');
+        return;
+      }
+      res = await supabaseClient.rpc('update_spr_record', Object.assign({
+        p_store_name: row.store_name,
+        p_activity_date: row.activity_date,
+        p_pin: pin,
+        p_m3: document.getElementById('e_m3').value,
+        p_spr_name: document.getElementById('e_spr').value.trim()
+      }, Object.fromEntries(EDIT_KEYS.map(k => ['p_' + k, vals[k]]))));
+    }
+
+    // 改名撞上「同门店 + 同一天」已有记录 → 让管理员选是否覆盖
+    if (res.error && upgraded && /STORE_CONFLICT/.test(String(res.error.message || ''))) {
+      const okOverwrite = window.confirm(
+        '「' + newStore + '」在 ' + row.activity_date + ' 已经有一条记录了。\n\n' +
+        '点「确定」= 覆盖：删掉已有的那条，把当前这条的数据搬过去\n' +
+        '点「取消」= 什么都不改');
+      if (okOverwrite) {
+        payload2.p_on_conflict = 'replace';
+        res = await supabaseClient.rpc('update_spr_record2', payload2);
+        if (!res.error) { saveBtn.disabled = false; saveBtn.textContent = '保存修改'; closeEditor(); loadFilters().then(loadData); return; }
+      } else {
+        saveBtn.disabled = false; saveBtn.textContent = '保存修改';
+        fail('已取消，未做任何改动。');
+        return;
+      }
+    }
+
     saveBtn.disabled = false; saveBtn.textContent = '保存修改';
 
     if (res.error) {
       const m = String(res.error.message || '');
       if (/管理密码/.test(m)) localStorage.removeItem('sprAdminPin');
-      errBox.textContent = /Could not find the function|PGRST202|42883/i.test(m)
-        ? '数据库还没升级（找不到 update_spr_record 函数）。请先在 Supabase SQL Editor 执行 supabase_admin.sql。'
-        : '保存失败：' + m;
-      errBox.className = 'err2 show';
+      fail(isMissingFn(m)
+        ? '数据库还没升级（找不到 update_spr_record / update_spr_record2 函数）。请先在 Supabase SQL Editor 执行 supabase_admin.sql 与 supabase_store_admin.sql。'
+        : '保存失败：' + m);
       return;
     }
     closeEditor();
-    loadData();
+    loadFilters().then(loadData);       // 改了门店名/M3 → 重新拉一遍筛选下拉
   });
 }
 
