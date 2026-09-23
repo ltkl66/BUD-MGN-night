@@ -188,16 +188,19 @@ document.getElementById('activityDate').max = ACT_END;
 
 /* ============ 防错 1：门店名必须从管理员维护的清单里选 ============
    门店清单（store_master 表）由管理员在「门店清单管理」页维护，按 M3 分区。
-   ★ 清单为空时自动退回原来的「历史门店联想」模式，不会把 SPR 卡住。 */
+   ★ 兜底规则（按 M3 逐个判定）：某个 M3 在清单里还没有门店时，该 M3 自动退回
+     原来的「历史门店联想」模式、不拦截提交 —— 只严格管已经配好清单的 M3，
+     绝不会因为管理员暂时没给某个 M3 配清单，就把那位 SPR 卡死。 */
 const KNOWN_STORES = new Set();     // 历史填报过的门店（兜底联想 / 管理员补录用）
 const MASTER_BY_M3 = {};            // { M3: Set(门店名) }，只含启用的门店
-let MASTER_ON = false;              // 管理员是否已经配好清单
 
 const storeInput = document.getElementById('store');
 const storeTip = document.getElementById('storeTip');
 const m3Select = document.getElementById('m3');
 
 function m3Stores(m3) { return MASTER_BY_M3[m3] || new Set(); }
+// 该 M3 是否已配好清单：配好 = 严格按清单选；没配 = 退回历史联想、不拦截
+function m3HasMaster(m3) { return !!(m3 && MASTER_BY_M3[m3] && MASTER_BY_M3[m3].size > 0); }
 
 function showTip(text, kind) {
   storeTip.textContent = text;
@@ -209,37 +212,44 @@ function renderStoreTip() {
   const m3 = m3Select.value;
   const v = storeInput.value.trim();
   storeTip.style.display = 'none';
-  if (!MASTER_ON) {                 // 兜底模式：与历史填报的写法比对
-    if (!v || !KNOWN_STORES.size) return;
+
+  if (!m3HasMaster(m3)) {           // 该 M3 还没配清单 → 与历史填报的写法比对，不拦截
+    if (!v) {
+      if (m3) showTip('「' + m3 + '」的门店清单还没配置，这次可以先手打门店名；管理员配好后会自动变成下拉选择。', 'warn');
+      return;
+    }
+    if (!KNOWN_STORES.size) return;
     if (KNOWN_STORES.has(v)) showTip('✓ 与历史填报的门店名完全一致', 'ok');
     else showTip('「' + v + '」不在历史名单里 —— 新门店请忽略；老门店请检查写法是否和以前一致（门店名是数据的唯一标识，写法不同会被当成两家店）。', 'warn');
     return;
   }
+
   if (!v) return;
-  if (!m3) { showTip('请先在上面选择 M3，再从该 M3 的门店清单里挑选门店。', 'warn'); return; }
   if (m3Stores(m3).has(v)) showTip('✓ 已在「' + m3 + '」的门店清单里', 'ok');
   else showTip('「' + v + '」不在「' + m3 + '」的门店清单里 —— 请从下拉列表中选择；如果这是新门店，请联系管理员把它加进清单。', 'warn');
 }
 
 function rebuildStoreList() {
   const m3 = m3Select.value;
-  const src = MASTER_ON ? (m3 ? [...m3Stores(m3)] : []) : [...KNOWN_STORES];
+  // 该 M3 已配清单 → 只列该 M3 的门店；还没配 → 退回历史门店联想
+  const src = m3HasMaster(m3) ? [...m3Stores(m3)] : [...KNOWN_STORES];
   document.getElementById('storeList').innerHTML =
     src.sort().map(s => '<option value="' + String(s).replace(/"/g, '&quot;') + '">').join('');
 }
 
 m3Select.addEventListener('change', () => {
   // 换了 M3 之后，原来选的门店若不属于新 M3 就清掉，避免门店配错 M3
+  // （只在该 M3 已配清单时才清；兜底模式下不动 SPR 已经输入的内容）
   const v = storeInput.value.trim();
   const m3 = m3Select.value;
-  if (MASTER_ON && v && (!m3 || !m3Stores(m3).has(v))) storeInput.value = '';
+  if (v && m3HasMaster(m3) && !m3Stores(m3).has(v)) storeInput.value = '';
   rebuildStoreList();
   renderStoreTip();
 });
 storeInput.addEventListener('input', renderStoreTip);
 
 (async function loadStoreData() {
-  // 1) 管理员维护的门店清单（表不存在或为空 → MASTER_ON 保持 false，退回兜底模式）
+  // 1) 管理员维护的门店清单（按 M3 分组；某个 M3 下面没有门店时，该 M3 单独走兜底）
   try {
     const PAGE = 1000;
     for (let off = 0; off < 50000; off += PAGE) {
@@ -256,8 +266,7 @@ storeInput.addEventListener('input', renderStoreTip);
       });
       if (data.length < PAGE) break;
     }
-    MASTER_ON = Object.keys(MASTER_BY_M3).length > 0;
-  } catch (e) { MASTER_ON = false; }
+  } catch (e) { /* 表还没建 / 读不到 → 所有 M3 都走历史门店联想兜底 */ }
   rebuildStoreList();
 
   // 2) 历史填报过的门店（兜底联想用，不参与拦截）
@@ -273,7 +282,7 @@ storeInput.addEventListener('input', renderStoreTip);
       if (data.length < PAGE) break;
     }
   } catch (e) { /* 拉不到不影响填写，只影响联想 */ }
-  if (!MASTER_ON) rebuildStoreList();
+  rebuildStoreList();   // 当前选中的 M3 若还没配清单，这里会换成历史门店联想
 })();
 
 /* ============ 防错 2：提交前校验 + 重复提交时选「追加 / 覆盖」 ============ */
@@ -336,8 +345,8 @@ form.addEventListener('submit', async (e) => {
   if (dateVal && (dateVal < ACT_START || dateVal > ACT_END)) {
     problems.push('活动日期必须是 ' + ACT_START + ' ~ ' + ACT_END + ' 之间（现在填的是 ' + dateVal + '）');
   }
-  // 严格模式：门店必须属于所选 M3 的清单（清单为空时不做此限制）
-  if (MASTER_ON && m3Val && storeVal && !m3Stores(m3Val).has(storeVal)) {
+  // 严格模式：门店必须属于所选 M3 的清单（该 M3 还没配清单时不做此限制，避免把人卡死）
+  if (m3Val && storeVal && m3HasMaster(m3Val) && !m3Stores(m3Val).has(storeVal)) {
     problems.push('门店「' + storeVal + '」不在「' + m3Val + '」的门店清单里。请从下拉列表里选择正确门店；如果这是新门店，请联系管理员把它加进清单。');
   }
   const nums = {};
