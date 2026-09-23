@@ -21,7 +21,7 @@ create table if not exists public.spr_records (
   mechanism3        integer   not null default 0,    -- 机制3：其他机制（听）
   mechanism4        integer   not null default 0,    -- 机制4：大桌锁定（店内收银条核销）（听）
   gift_255_cans     integer   not null default 0,    -- 赠品黑金255罐数量（自动=机制1+2+3+4）
-  bud_classic_gold  integer   not null default 0,    -- 当晚百威家族（不含黑金：经典/金尊/纯生）销量（瓶）
+  bud_classic_gold  integer   not null default 0,    -- 当晚百威家族（经典/金尊/纯生/铝罐）销量（瓶）；不含黑金，黑金单列
   blackgold_1l      integer   not null default 0,    -- 当晚黑金1L罐（瓶）
   blackgold_500     integer   not null default 0,    -- 当晚黑金500瓶（瓶）
   blackgold_600     integer   not null default 0,    -- 当晚黑金600瓶（瓶）
